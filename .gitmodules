@@ -1,0 +1,12 @@
+[submodule "benchmarks/fio"]
+	path = benchmarks/fio
+	url = https://github.com/axboe/fio.git
+[submodule "benchmarks/fs_mark"]
+	path = benchmarks/fs_mark
+	url = https://github.com/josefbacik/fs_mark.git
+[submodule "fs/e2fsprogs"]
+	path = fs/e2fsprogs
+	url = https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+[submodule "fs/libfuse"]
+	path = fs/libfuse
+	url = https://github.com/libfuse/libfuse.git
