@@ -1,0 +1,1 @@
+docker run -d --init --name fs-agent-run-001 --device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor=unconfined --security-opt seccomp=unconfined -v $PWD/runs/001:/workspace fs-agent:latest
