@@ -1,0 +1,4 @@
+models:
+  mount_runner: "openai:qwen3.7-max-2026-05-17"
+
+debug: true

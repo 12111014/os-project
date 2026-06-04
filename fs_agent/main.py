@@ -1,5 +1,8 @@
 import uuid
 from fs_agent.graph import build_graph
+from dotenv import load_dotenv
+
+load_dotenv(verbose=True)
 
 
 def main():

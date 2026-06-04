@@ -1,5 +1,5 @@
 from fs_agent.utils.sandbox_manager import SandboxManager, sandbox_from_state
-
+from fs_agent.agents.mount_runner_agent import MountRunnerAgent
 
 def mount_runner_node(state: dict):
     manager = SandboxManager()
@@ -17,6 +17,12 @@ echo $! > {pid_path}
 sleep 1
 mountpoint -q {mountpoint}
 """
+
+    agent = MountRunnerAgent(sandbox_from_state(state))
+    result = agent.perform_task(state)
+
+    print("mount agent result: ", result)
+
 
     result = manager.exec(sandbox, cmd, timeout=30)
 
