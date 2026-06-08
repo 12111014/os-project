@@ -89,12 +89,13 @@ def _iter_tool_calls(message: Any, content: Any) -> Iterable[tuple[str, str, str
             yield call_id, name, str(args)
 
 
-def print_clean_deepagent_stream(agent, payload: dict, show_tools: bool = True) -> dict[str, Any]:
+def print_clean_deepagent_stream(agent, payload: dict, context, show_tools: bool = True) -> dict[str, Any]:
     final_values: dict[str, Any] | None = None
     printed_tool_calls: set[str] = set()
 
     for mode, chunk in agent.stream(
         payload,
+        context=context,
         stream_mode=["messages", "values"],
     ):
         if mode == "values":

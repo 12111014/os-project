@@ -1,7 +1,9 @@
 models:
   # mount_runner: "openai:qwen3.6-35b-a3b"
-  mount_runner: "openai:qwen3.7-plus"
+  # mount_runner: "openai:qwen3.7-plus"
   # mount_runner: "deepseek:deepseek-v4-flash"
+  mount_runner: "deepseek:deepseek-v4-flash"
+  # mount_runner: "openai:deepseek-v4-flash"
   # mount_runner: "google_vertexai:gemini-3.5-flash"
 
 
