@@ -18,6 +18,7 @@ class FSAgentState(TypedDict, total=False):
     build_dir: str
     fs_binary: str
     mountpoint: str
+    filesystem_type: str
 
     # 规格与架构
     fs_ir: dict[str, Any]
