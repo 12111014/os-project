@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Literal
 from deepagents import create_deep_agent, DeepAgentState
 from langchain.agents.structured_output import ToolStrategy
-from langchain.chat_models import init_chat_model
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -109,10 +108,7 @@ class MountRunnerAgent:
     def __init__(self, sandbox: SandboxRef):
         cfg = Config()
         self.backend = SandboxBackend(sandbox)
-        self.model = init_chat_model(
-            model=cfg.models.get("mount_runner"),
-            extra_body={"thinking": {"type": "disabled"}}
-        )
+        self.model = cfg.build_model("mount_runner")
 
         self.agent = create_deep_agent(
             model=self.model,

@@ -24,6 +24,7 @@ class Config(metaclass=SingletonMeta):
     def __init__(self, path: str | Path | None = None):
         self.path = Path(path) if path is not None else DEFAULT_CONFIG_PATH
         self.models: dict[str, str] = {}
+        self.model_extra_body: dict[str, Any] = {}
         self.debug: bool = False
 
         self.load_config(self.path)
@@ -42,4 +43,30 @@ class Config(metaclass=SingletonMeta):
         if not isinstance(self.models, dict):
             raise ValueError("Invalid config: 'models' must be a dict")
 
+        self.model_extra_body = config.get("model_extra_body", {}) or {}
+
+        if not isinstance(self.model_extra_body, dict):
+            raise ValueError("Invalid config: 'model_extra_body' must be a dict")
+
         self.debug = config.get("debug", False)
+
+    def build_model(self, role: str):
+        """Build the chat model for an agent role from config.
+
+        The model id is the ``"<provider>:<model>"`` string under ``models``.
+        ``model_extra_body`` (if non-empty) is forwarded to ``init_chat_model``
+        as ``extra_body``, so provider-specific options live in config instead
+        of code — e.g. Qwen's ``{"enable_thinking": false}`` or DeepSeek's
+        ``{"thinking": {"type": "disabled"}}``. Leaving it empty keeps the call
+        provider-agnostic, compatible with both DeepSeek and Qwen.
+        """
+        from langchain.chat_models import init_chat_model
+
+        model_name = self.models.get(role)
+        if not model_name:
+            raise ValueError(f"No model configured for role '{role}'")
+
+        kwargs: dict[str, Any] = {"model": model_name}
+        if self.model_extra_body:
+            kwargs["extra_body"] = self.model_extra_body
+        return init_chat_model(**kwargs)
