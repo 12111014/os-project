@@ -1,10 +1,21 @@
+# Models are "<provider>:<model>" strings passed to langchain init_chat_model.
+# Qwen is served through DashScope's OpenAI-compatible endpoint, so we use the
+# "openai:" provider and point it at DashScope via env vars (see .env below):
+#   OPENAI_API_KEY   = <your DashScope API key>
+#   OPENAI_BASE_URL  = https://dashscope.aliyuncs.com/compatible-mode/v1
+#   OPENAI_API_BASE  = https://dashscope.aliyuncs.com/compatible-mode/v1
 models:
-  # mount_runner: "openai:qwen3.6-35b-a3b"
-  # mount_runner: "openai:qwen3.7-plus"
   # mount_runner: "deepseek:deepseek-v4-flash"
-  mount_runner: "deepseek:deepseek-v4-flash"
-  # mount_runner: "openai:deepseek-v4-flash"
-  # mount_runner: "google_vertexai:gemini-3.5-flash"
+  mount_runner: "openai:qwen3.7-max"
+  code_generator: "openai:qwen3.7-max"
+  build_runner: "openai:qwen3.7-max"
+
+# Optional kwargs forwarded to init_chat_model as `extra_body`.
+# Leave empty ({}) for a provider-agnostic call that works with both DeepSeek
+# and Qwen. To turn off reasoning, set the provider-specific option here:
+#   Qwen (DashScope):  {"enable_thinking": false}
+#   DeepSeek:          {"thinking": {"type": "disabled"}}
+model_extra_body: {}
 
 
 debug: true
