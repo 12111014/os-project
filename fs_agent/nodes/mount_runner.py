@@ -36,7 +36,7 @@ def mount_runner_node(state: dict):
         "current_phase": "mounted",
         "mount_status": result.mount_status,
         "mountpoint": result.mountpoint,
-        "filesystem_type": result.filesystem_type,
+        "fs_type": result.fs_type,
         "logs": {**state.get("logs", {}), "fuse": result.log_path},
         "artifacts": {**state.get("artifacts", {}), "fuse_pid": result.pid_path},
     }

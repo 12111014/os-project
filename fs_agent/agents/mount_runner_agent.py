@@ -84,7 +84,7 @@ class MountAgentResult(BaseModel):
         description="Path of the FUSE stdout/stderr log.",
     )
 
-    filesystem_type: str | None = Field(
+    fs_type: str | None = Field(
         default=None,
         description="Filesystem type reported by mount/findmnt, e.g. fuse.agentfs.",
     )

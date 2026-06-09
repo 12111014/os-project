@@ -18,7 +18,8 @@ class FSAgentState(TypedDict, total=False):
     build_dir: str
     fs_binary: str
     mountpoint: str
-    filesystem_type: str
+    template_dir: str
+    fs_type: str
 
     # 规格与架构
     fs_ir: dict[str, Any]
@@ -32,8 +33,8 @@ class FSAgentState(TypedDict, total=False):
     test_status: Literal["not_started", "passed", "failed"]
 
     # 日志与产物
-    logs: dict[str, str]
-    artifacts: dict[str, str]
+    logs: Annotated[dict[str, str], operator.or_]
+    artifacts: Annotated[dict[str, str], operator.or_]
 
     # 问题和修复记录，用 reducer 追加
     issues: Annotated[list[dict[str, Any]], operator.add]

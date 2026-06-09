@@ -9,7 +9,11 @@ def create_sandbox_node(state: dict):
 
     manager = SandboxManager("fs-agent:latest")
     sandbox = manager.create(run_id, host_workspace)
-
+    
+    repo_root = Path(__file__).resolve().parents[1]
+    template_root = repo_root / "templates"
+    manager.upload(sandbox, template_root, "/workspace/templates")
+    
     return {
         "current_phase": "sandbox_created",
         "sandbox": {
@@ -22,6 +26,7 @@ def create_sandbox_node(state: dict):
         "build_dir": "/workspace/generated_fs/build",
         "fs_binary": "/workspace/generated_fs/build/agentfs",
         "mountpoint": "/mnt/agentfs",
+        "template_dir": "/workspace/templates",
         "build_status": "not_started",
         "mount_status": "not_started",
         "test_status": "not_started",

@@ -51,6 +51,21 @@ class SandboxManager:
             host_workspace=host_workspace,
         )
 
+    def upload(self, sandbox, source_dir, dest_dir) -> ExecResult:
+        cmd = [
+            "docker", "cp",
+            source_dir,
+            sandbox.container_name + f":{dest_dir}",
+        ]
+
+        proc = subprocess.run(
+            cmd,
+            text=True,
+            capture_output=False,
+        )
+
+        return ExecResult(proc.returncode, proc.stdout, proc.stderr)
+
     def exec(
         self,
         sandbox: SandboxRef,
