@@ -1,11 +1,12 @@
 models:
   # mount_runner: "openai:qwen3.6-35b-a3b"
-#  mount_runner: "openai:qwen3.7-plus"
-   mount_runner: "deepseek:deepseek-v4-flash"
+  # mount_runner: "openai:qwen3.7-plus"
+  # mount_runner: "deepseek:deepseek-v4-flash"
+  mount_runner: "deepseek:deepseek-v4-flash"
+  # mount_runner: "openai:deepseek-v4-flash"
   # mount_runner: "google_vertexai:gemini-3.5-flash"
-
-   requirement_parser: "deepseek:deepseek-v4-flash"
-   architecture_planner: "deepseek:deepseek-v4-flash"
+  requirement_parser: "deepseek:deepseek-v4-flash"
+  architecture_planner: "deepseek:deepseek-v4-flash"
 
 api_keys:
   deepseek_key: "sk-fa4f09c0e0ec4111a6a5da0037554cd2"

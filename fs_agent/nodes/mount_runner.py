@@ -1,6 +1,5 @@
-from fs_agent.schemas.agent_outputs import MountAgentResult
 from fs_agent.utils.sandbox_manager import SandboxManager, sandbox_from_state
-from fs_agent.agents.mount_runner_agent import MountRunnerAgent
+from fs_agent.agents.mount_runner_agent import MountRunnerAgent, MountAgentResult
 
 
 def mount_runner_node(state: dict):
