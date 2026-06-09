@@ -24,6 +24,7 @@ class Config(metaclass=SingletonMeta):
     def __init__(self, path: str | Path | None = None):
         self.path = Path(path) if path is not None else DEFAULT_CONFIG_PATH
         self.models: dict[str, str] = {}
+        self.api_keys: dict[str, str] = {}
         self.debug: bool = False
 
         self.load_config(self.path)
@@ -41,5 +42,7 @@ class Config(metaclass=SingletonMeta):
 
         if not isinstance(self.models, dict):
             raise ValueError("Invalid config: 'models' must be a dict")
+
+        self.api_keys = config.get("api_keys", {})
 
         self.debug = config.get("debug", False)
