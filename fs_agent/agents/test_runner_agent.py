@@ -14,17 +14,17 @@ from fs_agent.utils.sandbox_manager import SandboxRef
 
 TEST_RUNNER_AGENT_PROMPT = """
 You are the Test Agent for a generated FUSE filesystem. Your backend is running inside a Docker sandbox.
-The filesystem under test is already mounted. You are provided with a test policy, filesystem IR, paths for logs/results, and uploaded deterministic test templates.
+The filesystem under test is already mounted. You are provided with a test policy, filesystem IR, directory specifications and uploaded deterministic test templates.
 
 Your job:
 - Inspect the mounted FUSE filesystem before testing.
 - Run only policy-enabled suites unless an extra diagnostic check is needed to explain a failure.
-- Prefer the uploaded templates in test_template_dir over inventing new tests.
-- Copy or render every script/workload you run into test_run_dir.
-- Write logs into test_log_dir.
+- Prefer the uploaded templates inside provided test_template_dir over inventing new tests.
+- Copy or render every script/workload you run inside provided test_run_dir.
+- Write test logs inside provided test_log_dir.
 - Separate correctness failures from benchmark degradation.
 - Record concise issues with log paths for every failed or timed-out case.
-- Write a test summary/report markdown file into test_result_dir.
+- Write a test summary/report markdown file inside provided test_result_dir.
 - Return only valid JSON.
 
 Required ordering:
@@ -101,11 +101,8 @@ class TestRunnerAgent:
     def __init__(self, sandbox: SandboxRef):
         cfg = Config()
         self.backend = SandboxBackend(sandbox)
-        model = cfg.models.get("test_runner") or cfg.models.get("mount_runner")
-        self.model = init_chat_model(
-            model=model,
-            extra_body={"thinking": {"type": "disabled"}},
-        )
+        self.model = cfg.build_model("test_runner")
+
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
@@ -125,6 +122,15 @@ class TestRunnerAgent:
         return result["structured_response"]
 
     def perform_task(self, state: dict[str, Any], message: str = "") -> TestAgentResult:
+        test_template_dir = str(
+            Path(state.get("template_dir", "/workspace/templates")) / "tests")
+        test_run_dir = str(
+            Path(state.get("workspace", "/workspace")) / "run" / "tests")
+        test_log_dir = str(
+            Path(state.get("workspace", "/workspace")) / "logs" / "tests")
+        test_result_dir = str(
+            Path(state.get("workspace", "/workspace")) / "results" / "tests")
+
         context = TestRunnerContext(
             workspace=state.get("workspace"),
             mountpoint=state.get("mountpoint"),
@@ -137,15 +143,20 @@ class TestRunnerAgent:
             fs_ir=state.get("fs_ir"),
             test_policy=state.get("test_policy") or _default_test_policy(
                 state.get("fs_ir", {})),
-            test_template_dir=str(
-                Path(state.get("template_dir", "/workspace/templates")) / "tests"),
-            test_run_dir=str(
-                Path(state.get("workspace", "/workspace")) / "run" / "tests"),
-            test_log_dir=str(
-                Path(state.get("workspace", "/workspace")) / "logs" / "tests"),
-            test_result_dir=str(
-                Path(state.get("workspace", "/workspace")) / "results" / "tests"),
+            test_template_dir=test_template_dir,
+            test_run_dir=test_run_dir,
+            test_log_dir=test_log_dir,
+            test_result_dir=test_result_dir,
         )
+
+        instructions = (
+            f"Test the FUSE filesystem.\n"
+            f"- test template directory: {test_template_dir}\n"
+            f"- run tests in directory: {test_run_dir}\n"
+            f"- write the test logs in: {test_log_dir}\n"
+            f"- write the test report to: {test_result_dir}\n"
+        )
+
         payload = {
             "messages": [
                 {
@@ -154,7 +165,7 @@ class TestRunnerAgent:
                 },
                 {
                     "role": "user",
-                    "content": message,
+                    "content": instructions + (f"\n\n{message}" if message else ""),
                 },
             ]
         }

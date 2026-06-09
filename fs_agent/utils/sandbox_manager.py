@@ -79,13 +79,17 @@ class SandboxManager:
             sandbox.container_name,
             "bash", "-lc", command,
         ]
-
-        proc = subprocess.run(
-            cmd,
-            text=True,
-            capture_output=True,
-            timeout=timeout,
-        )
+        
+        proc = None
+        try:
+            proc = subprocess.run(
+                cmd,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return ExecResult(124, proc.stdout, f"Command timed out after {timeout} seconds")
 
         return ExecResult(proc.returncode, proc.stdout, proc.stderr)
 

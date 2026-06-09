@@ -116,7 +116,6 @@ class MountRunnerAgent:
             backend=self.backend,
             system_prompt=MOUNT_RUNNER_AGENT_PROMPT,
             context_schema=MountRunnerContext,
-            # response_format=MountAgentResult,
             response_format=ToolStrategy(MountAgentResult),
         )
 
