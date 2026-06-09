@@ -21,9 +21,10 @@ Your job:
 - Run only policy-enabled suites unless an extra diagnostic check is needed to explain a failure.
 - Prefer the uploaded templates in test_template_dir over inventing new tests.
 - Copy or render every script/workload you run into test_run_dir.
-- Write logs into test_log_dir and summaries/results into test_result_dir.
+- Write logs into test_log_dir.
 - Separate correctness failures from benchmark degradation.
 - Record concise issues with log paths for every failed or timed-out case.
+- Write a test summary/report markdown file into test_result_dir.
 - Return only valid JSON.
 
 Required ordering:
@@ -35,7 +36,8 @@ Required ordering:
 Do not use host paths.
 Do not use docker commands.
 Use only the provided sandbox tools.
-    """
+Avoid executing commands like "cd" since the sandbox backend cannot remember current working directory.
+"""
 
 DEBUG = Config().debug
 
@@ -92,7 +94,6 @@ class TestAgentResult(BaseModel):
     metrics: list[BenchmarkMetric] = Field(default_factory=list)
     logs: dict[str, str] = Field(default_factory=dict)
     artifacts: dict[str, str] = Field(default_factory=dict)
-    diagnosis: str = ""
     issues: list[TestIssue] = Field(default_factory=list)
 
 
@@ -117,25 +118,33 @@ class TestRunnerAgent:
         if DEBUG:
             print("test runner agent invoking")
             from fs_agent.utils.stream_print import print_clean_deepagent_stream
-            result = print_clean_deepagent_stream(self.agent, payload, context, True)
+            result = print_clean_deepagent_stream(
+                self.agent, payload, context, True)
         else:
             result = self.agent.invoke(payload, context=context)
         return result["structured_response"]
 
     def perform_task(self, state: dict[str, Any], message: str = "") -> TestAgentResult:
         context = TestRunnerContext(
-            workspace=state.get("workspace", "/workspace"),
-            mountpoint=state.get("mountpoint", "/mnt/agentfs"),
-            fs_binary=state.get("fs_binary", "/workspace/generated_fs/build/agentfs"),
-            fs_type=state.get("filesystem_type") or state.get("fs_type") or "",
-            fuse_log_path=state.get("logs", {}).get("fuse", "/workspace/logs/fuse.log"),
-            fuse_pid_path=state.get("artifacts", {}).get("fuse_pid", "/workspace/run/fuse.pid"),
-            fs_ir=state.get("fs_ir", {}),
-            test_policy=state.get("test_policy") or _default_test_policy(state.get("fs_ir", {})),
-            test_template_dir=str(Path(state.get("template_dir", "/workspace/templates")) / "tests"),
-            test_run_dir=str(Path(state.get("workspace", "/workspace")) / "run" / "tests"),
-            test_log_dir=str(Path(state.get("workspace", "/workspace")) / "logs" / "tests"),
-            test_result_dir=str(Path(state.get("workspace", "/workspace")) / "results" / "tests"),
+            workspace=state.get("workspace"),
+            mountpoint=state.get("mountpoint"),
+            fs_binary=state.get("fs_binary"),
+            fs_type=state.get("fs_type"),
+            fuse_log_path=state.get("logs").get(
+                "fuse", "/workspace/logs/fuse.log"),
+            fuse_pid_path=state.get("artifacts").get(
+                "fuse_pid", "/workspace/run/fuse.pid"),
+            fs_ir=state.get("fs_ir"),
+            test_policy=state.get("test_policy") or _default_test_policy(
+                state.get("fs_ir", {})),
+            test_template_dir=str(
+                Path(state.get("template_dir", "/workspace/templates")) / "tests"),
+            test_run_dir=str(
+                Path(state.get("workspace", "/workspace")) / "run" / "tests"),
+            test_log_dir=str(
+                Path(state.get("workspace", "/workspace")) / "logs" / "tests"),
+            test_result_dir=str(
+                Path(state.get("workspace", "/workspace")) / "results" / "tests"),
         )
         payload = {
             "messages": [
@@ -149,6 +158,19 @@ class TestRunnerAgent:
                 },
             ]
         }
+
+        print(f"""
+==========================
+test runner agent started:
+  
+payload:
+{payload}
+
+context:
+{context}
+"""
+        )
+
         return self._invoke(payload, context)
 
 

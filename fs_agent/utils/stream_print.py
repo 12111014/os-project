@@ -89,6 +89,25 @@ def _iter_tool_calls(message: Any, content: Any) -> Iterable[tuple[str, str, str
             yield call_id, name, str(args)
 
 
+def _iter_tool_arg_text(message: Any) -> Iterable[tuple[str, str]]:
+    seen: set[tuple[str, str]] = set()
+
+    for attr in ("tool_call_chunks", "invalid_tool_calls"):
+        for call in getattr(message, attr, None) or []:
+            if not isinstance(call, dict):
+                continue
+            if call.get("name"):
+                continue
+            args = call.get("args") or call.get("arguments") or ""
+            if not args:
+                continue
+            key = (str(call.get("id") or call.get("index") or ""), str(args))
+            if key in seen:
+                continue
+            seen.add(key)
+            yield attr, str(args)
+
+
 def print_clean_deepagent_stream(agent, payload: dict, context, show_tools: bool = True) -> dict[str, Any]:
     final_values: dict[str, Any] | None = None
     printed_tool_calls: set[str] = set()
@@ -110,7 +129,11 @@ def print_clean_deepagent_stream(agent, payload: dict, context, show_tools: bool
         content = _get_content(message)
 
         for text in _iter_text(content):
-            print(text, end="", flush=True)
+            print(text, end="", flush=False)
+
+        if show_tools:
+            for _, text in _iter_tool_arg_text(message):
+                print(text, end="", flush=False)
 
         if not show_tools:
             continue
@@ -121,7 +144,7 @@ def print_clean_deepagent_stream(agent, payload: dict, context, show_tools: bool
                 continue
             printed_tool_calls.add(key)
             suffix = f" {arguments}" if arguments else ""
-            print(f"\n[tool call] {name}{suffix}", flush=True)
+            print(f"\n[tool call] {name}{suffix}", flush=False)
 
     print()
 

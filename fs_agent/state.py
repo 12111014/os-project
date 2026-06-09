@@ -30,7 +30,7 @@ class FSAgentState(TypedDict, total=False):
     # 构建/挂载/测试状态
     build_status: Literal["not_started", "passed", "failed"]
     mount_status: Literal["not_started", "mounted", "failed", "cleaned"]
-    test_status: Literal["not_started", "passed", "failed"]
+    test_status: Literal["not_started", "passed", "failed", "degraded"]
 
     # 日志与产物
     logs: Annotated[dict[str, str], operator.or_]

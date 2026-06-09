@@ -14,18 +14,23 @@ def build_runner_node(state: dict):
     agent = BuildRunnerAgent(sandbox_from_state(state))
     result: BuildRunnerResult = agent.perform_task(state)
 
-    print("build runner agent result: ", result)
+    print(f"""
+================================
+build runner agent result: 
+{result}
+"""
+          )
 
     if result.build_status == "passed":
         return {
             "current_phase": "build_passed",
             "build_status": "passed",
-            "logs": {**state.get("logs", {}), "build": result.log_path},
+            "logs": {"build": result.log_path},
         }
 
     return {
         "current_phase": "build_failed",
         "build_status": "failed",
-        "logs": {**state.get("logs", {}), "build": result.log_path},
-        "issues": result.issues,
+        "logs": {"build": result.log_path},
+        "issues": [issue.model_dump() for issue in result.issues],
     }

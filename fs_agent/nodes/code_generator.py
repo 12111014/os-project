@@ -15,12 +15,17 @@ def code_generator_node(state: dict):
     agent = CodeGeneratorAgent(sandbox_from_state(state))
     result: CodeGeneratorResult = agent.perform_task(state)
 
-    print("code generator agent result: ", result)
+    print(f"""
+================================
+code generator agent result: 
+{result}
+"""
+          )
 
     if result.status == "failed":
         return {
             "current_phase": "code_generation_failed",
-            "issues": result.issues,
+            "issues": [issue.model_dump() for issue in result.issues],
         }
 
     return {
@@ -29,7 +34,6 @@ def code_generator_node(state: dict):
         "build_dir": state["build_dir"],
         "fs_binary": state["fs_binary"],
         "artifacts": {
-            **state.get("artifacts", {}),
             "codegen_method": result.method,
         },
         "patches": [

@@ -28,8 +28,10 @@ Your job:
 On failure, include a short diagnosis and the tail of the build log so the
 debugger has something to work with.
 
-Do not use host paths. Do not use docker commands. Use only the provided
-sandbox tools.
+Do not use host paths.
+Do not use docker commands. 
+Use only the provided sandbox tools.
+Avoid executing commands like "cd" since the sandbox backend cannot remember current working directory.
 """
 
 

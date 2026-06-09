@@ -40,6 +40,8 @@ Prefer adapting the known-good skeleton over writing from scratch.
 Write the files with `write_file` (one call per file) using paths relative to
 the source directory you are given. Do not print file contents in chat. When
 done, return only the structured JSON result describing what you wrote.
+
+Avoid executing commands like "cd" since the sandbox backend cannot remember current working directory.
 """
 
 
