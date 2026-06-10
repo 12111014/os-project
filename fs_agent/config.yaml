@@ -10,8 +10,8 @@ models:
   build_runner: "deepseek:deepseek-v4-pro"
   test_runner: "deepseek:deepseek-v4-pro"
   debugger: "deepseek:deepseek-v4-pro"
-  requirement_parser: "deepseek:deepseek-v4-flash"
-  architecture_planner: "deepseek:deepseek-v4-flash"
+  requirement_parser: "deepseek:deepseek-v4-pro"
+  architecture_planner: "deepseek:deepseek-v4-pro"
 
 # Optional kwargs forwarded to init_chat_model as `extra_body`.
 # Leave empty ({}) for a provider-agnostic call that works with both DeepSeek

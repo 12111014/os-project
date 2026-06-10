@@ -97,6 +97,8 @@ def build_graph():
         route_after_debug,
         {
             "build_runner": "build_runner",
+            "mount_runner": "mount_runner",
+            "test_runner": "test_runner",
             "cleanup": "cleanup",
         },
     )
