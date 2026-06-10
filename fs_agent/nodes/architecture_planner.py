@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 from fs_agent.agents.architecture_planner_agent import ArchitecturePlannerAgent
+from fs_agent.config import Config
 
+DEBUG = Config().debug
 
 def architecture_planner_node(state: dict):
     run_id = state["run_id"]
@@ -18,7 +20,7 @@ def architecture_planner_node(state: dict):
         print(f"[architecture_planner]   Operations: {len(fs_ir.get('operations', []))}")
 
         agent = ArchitecturePlannerAgent()
-        result = agent.perform_task(fs_ir)
+        result = agent.perform_task(state)
 
         print(f"[architecture_planner] ✓ Agent completed successfully result:{result}")
 
@@ -33,16 +35,6 @@ def architecture_planner_node(state: dict):
             "memory_management": result.memory_management,
             "error_handling": result.error_handling,
         }
-
-        issues = []
-        if result.warnings:
-            # issues.extend([
-            #     {"type": "architecture_warning", "summary": w}
-            #     for w in result.warnings
-            # ])
-            print(f"[architecture_planner] Warnings: {len(result.warnings)}")
-            for w in result.warnings:
-                print(f"  ⚠ {w}")
 
         print(f"[architecture_planner] Confidence: {result.confidence:.2f}")
         print(f"[architecture_planner] Reasoning: {result.reasoning[:200]}...")
@@ -59,14 +51,15 @@ def architecture_planner_node(state: dict):
         )
 
         # 打印架构摘要
-        print(f"[architecture_planner] ✓ Designed successfully")
-        print(f"[architecture_planner]   Modules: {len(result.modules)}")
-        for module in result.modules:
-            print(f"[architecture_planner]     - {module.name}: {module.responsibility[:50]}...")
-        print(f"[architecture_planner]   Data structures: {len(result.data_structures)}")
-        print(f"[architecture_planner]   Limitations: {len(result.limitations)}")
-        print(f"[architecture_planner]   Threading: {result.threading_model}")
-        print(f"[architecture_planner]   Memory: {result.memory_management}\n")
+        if DEBUG:
+            print(f"[architecture_planner] ✓ Designed successfully")
+            print(f"[architecture_planner]   Modules: {len(result.modules)}")
+            for module in result.modules:
+                print(f"[architecture_planner]     - {module.name}: {module.responsibility[:50]}...")
+            print(f"[architecture_planner]   Data structures: {len(result.data_structures)}")
+            print(f"[architecture_planner]   Limitations: {len(result.limitations)}")
+            print(f"[architecture_planner]   Threading: {result.threading_model}")
+            print(f"[architecture_planner]   Memory: {result.memory_management}\n")
 
     except Exception as exc:
         print(f"[architecture_planner] ✗ Agent failed: {exc}")
