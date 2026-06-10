@@ -10,6 +10,8 @@ models:
   build_runner: "deepseek:deepseek-v4-pro"
   test_runner: "deepseek:deepseek-v4-pro"
   debugger: "deepseek:deepseek-v4-pro"
+  requirement_parser: "deepseek:deepseek-v4-flash"
+  architecture_planner: "deepseek:deepseek-v4-flash"
 
 # Optional kwargs forwarded to init_chat_model as `extra_body`.
 # Leave empty ({}) for a provider-agnostic call that works with both DeepSeek
@@ -17,7 +19,6 @@ models:
 #   Qwen (DashScope):  {"enable_thinking": false}
 #   DeepSeek:          {"thinking": {"type": "disabled"}}
 model_extra_body: {"thinking": {"type": "disabled"}}
-
 
 debug: true
 # debug: false

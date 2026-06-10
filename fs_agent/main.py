@@ -1,21 +1,47 @@
 import uuid
+from pathlib import Path
+
 from fs_agent.graph import build_graph
 from dotenv import load_dotenv
 
 load_dotenv(verbose=True)
 
 
+def load_user_request(request_file: str | Path = "user_request.md") -> str:
+    request_path = Path(request_file)
+
+    if not request_path.exists():
+        raise FileNotFoundError(
+            f"User request file not found: {request_path}\n"
+            f"Please create {request_file} with your filesystem requirements."
+        )
+
+    content = request_path.read_text(encoding="utf-8").strip()
+
+    if not content:
+        raise ValueError(f"User request file is empty: {request_path}")
+
+    return content
+
 def main():
     graph = build_graph()
 
     run_id = uuid.uuid4().hex[:8]
 
-    initial_state = {
-        "run_id": run_id,
-        "user_request": (
+    try:
+        user_request = load_user_request("user_request.md")
+        print(f"✓ Loaded user request from user_request.md ({len(user_request)} chars)")
+    except (FileNotFoundError, ValueError) as e:
+        print(f"{e}")
+        print("Using default request...")
+        user_request = (
             "生成一个基于 FUSE/libfuse3 的简单内存文件系统，"
             "支持 create/read/write/readdir/mkdir/unlink/rename/truncate。"
-        ),
+        )
+
+    initial_state = {
+        "run_id": run_id,
+        "user_request": user_request,
         "max_retries": 2,
         "issues": [],
         "patches": [],
