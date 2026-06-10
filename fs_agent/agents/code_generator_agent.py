@@ -41,6 +41,7 @@ Write the files with `write_file` (one call per file) using paths relative to
 the source directory you are given. Do not print file contents in chat. When
 done, return only the structured JSON result describing what you wrote.
 
+You don't need to build and verify the generated code since the build agent, test agent and debug agent will do that.
 Avoid executing commands like "cd" since the sandbox backend cannot remember current working directory.
 """
 

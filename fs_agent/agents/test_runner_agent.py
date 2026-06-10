@@ -19,13 +19,13 @@ The filesystem under test is already mounted. You are provided with a test polic
 Your job:
 - Inspect the mounted FUSE filesystem before testing.
 - Run only policy-enabled suites unless an extra diagnostic check is needed to explain a failure.
-- Prefer the uploaded templates inside provided test_template_dir over inventing new tests.
+- Prefer the uploaded templates inside provided test_template_dir over inventing new tests, but if template tests are not enough to fs_ir, you should modify templates or conduct additional tests.
 - Based on fs_ir, develop new and necessary tests not in test templates.
 - Copy or render every script/workload you run inside provided test_run_dir.
 - Write test logs inside provided test_log_dir.
 - Separate correctness failures from benchmark degradation.
 - Record concise issues with log paths for every failed or timed-out case.
-- Write a test summary/report markdown file inside provided test_result_dir.
+- Write a detailed test report markdown file inside provided test_result_dir.
 - Return only valid JSON.
 
 Required ordering:
