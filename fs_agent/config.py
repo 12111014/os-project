@@ -24,7 +24,6 @@ class Config(metaclass=SingletonMeta):
     def __init__(self, path: str | Path | None = None):
         self.path = Path(path) if path is not None else DEFAULT_CONFIG_PATH
         self.models: dict[str, str] = {}
-        self.api_keys: dict[str, str] = {}
         self.debug: bool = False
 
         self.load_config(self.path)

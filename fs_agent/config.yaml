@@ -8,9 +8,6 @@ models:
   requirement_parser: "deepseek:deepseek-v4-flash"
   architecture_planner: "deepseek:deepseek-v4-flash"
 
-api_keys:
-  deepseek_key: "sk-fa4f09c0e0ec4111a6a5da0037554cd2"
-
 
 debug: true
 # debug: false

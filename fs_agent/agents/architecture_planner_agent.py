@@ -1,10 +1,11 @@
+from dataclasses import dataclass
 from deepagents import create_deep_agent, DeepAgentState
-from langchain.agents.structured_output import ToolStrategy
+from langchain.agents.structured_output import ToolStrategy, ProviderStrategy
 from langchain.chat_models import init_chat_model
 import json
 
 from fs_agent.config import Config
-from fs_agent.schemas.arch_agent_outputs import ArchitecturePlanResult
+from pydantic import BaseModel, Field
 
 ARCHITECTURE_PLANNER_AGENT_PROMPT = """
 You are a Filesystem Architect specializing in FUSE-based filesystem design.
@@ -62,10 +63,84 @@ Do not include any prose outside the JSON structure.
 
 DEBUG = Config().debug
 
+@dataclass
+class ArchitecturePlannerContext:
+    fs_ir: dict
 
 class ArchitecturePlannerState(DeepAgentState):
     """State for architecture planner agent."""
     fs_ir: dict
+
+class ModuleSpec(BaseModel):
+    name: str = Field(description="Module name")
+    responsibility: str = Field(description="Module responsibility")
+    files: list[str] = Field(default_factory=list, description="Source files in this module")
+
+
+class DataStructureSpec(BaseModel):
+    name: str = Field(description="Data structure name")
+    description: str = Field(description="Purpose and design")
+    fields: list[str] = Field(default_factory=list, description="Key fields")
+
+class ArchitecturePlannerResult(BaseModel):
+    success: bool = Field(description="Whether architecture design succeeded")
+
+    modules: list[ModuleSpec] = Field(
+        default_factory=list,
+        description="Module decomposition"
+    )
+
+    data_model: dict[str, str] = Field(
+        default_factory=dict,
+        description="Data model description (name -> description)"
+    )
+
+    data_structures: list[DataStructureSpec] = Field(
+        default_factory=list,
+        description="Key data structures"
+    )
+
+    fuse_operations: list[str] = Field(
+        default_factory=list,
+        description="FUSE operations to implement"
+    )
+
+    api_boundaries: list[str] = Field(
+        default_factory=list,
+        description="Module API boundaries"
+    )
+
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Known limitations and out-of-scope features"
+    )
+
+    threading_model: str = Field(
+        default="mutex-based",
+        description="Concurrency control strategy"
+    )
+
+    memory_management: str = Field(
+        default="dynamic allocation with cleanup",
+        description="Memory management strategy"
+    )
+
+    error_handling: str = Field(
+        default="errno-based",
+        description="Error handling pattern"
+    )
+
+    confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score of the architecture design"
+    )
+
+    reasoning: str = Field(
+        default="",
+        description="Explanation of architectural decisions"
+    )
 
 
 class ArchitecturePlannerAgent:
@@ -76,7 +151,6 @@ class ArchitecturePlannerAgent:
 
         self.model = init_chat_model(
             model=cfg.models.get("architecture_planner", "deepseek:deepseek-v4-flash"),
-            api_key=cfg.api_keys.get("deepseek_key"),
             extra_body={"thinking": {"type": "disabled"}}
         )
 
@@ -85,20 +159,41 @@ class ArchitecturePlannerAgent:
             backend=None,
             system_prompt=ARCHITECTURE_PLANNER_AGENT_PROMPT,
             state_schema=ArchitecturePlannerState,
-            response_format=ToolStrategy(ArchitecturePlanResult),
+            response_format=ToolStrategy(ArchitecturePlannerResult)
         )
 
-    def _invoke(self, payload):
-        """Invoke the agent with debug support."""
-        if DEBUG:
-            print("architecture planner agent invoking")
-            from fs_agent.utils.stream_print import print_clean_deepagent_stream
-            result = print_clean_deepagent_stream(self.agent, payload, True)
-        else:
-            result = self.agent.invoke(payload)
-        return result["structured_response"]
+    def _invoke(self, payload, context):
+        """Invoke the agent with debug support and retry if structured_response is missing."""
+        max_retries = 3
 
-    def perform_task(self, fs_ir: dict) -> ArchitecturePlanResult:
+        for attempt in range(1, max_retries + 1):
+            if DEBUG:
+                print(f"architecture planner agent invoking (attempt {attempt}/{max_retries})")
+                from fs_agent.utils.stream_print import print_clean_deepagent_stream
+                result = print_clean_deepagent_stream(self.agent, payload, context, True)
+            else:
+                result = self.agent.invoke(payload, context=context)
+
+            # 检查是否包含 structured_response
+            if isinstance(result, dict) and "structured_response" in result:
+                print(f"requirement parser agent done: got structured_response on attempt {attempt}")
+                return result["structured_response"]
+
+            if isinstance(result, ArchitecturePlannerResult):
+                return result
+
+            # 如果没有获取到结构化响应，记录警告并重试
+            print(f"[WARNING] Attempt {attempt}: structured_response not found in result (type: {type(result)})")
+            if attempt < max_retries:
+                print(f"[WARNING] Retrying... ({attempt + 1}/{max_retries})")
+
+        # 所有重试都失败后，抛出异常或返回 None
+        raise RuntimeError(
+            f"Failed to get structured_response after {max_retries} attempts. "
+            f"Last result type: {type(result)}"
+        )
+
+    def perform_task(self, state) -> ArchitecturePlannerResult:
         """Design architecture based on FilesystemIR."""
 
         payload = {
@@ -107,10 +202,11 @@ class ArchitecturePlannerAgent:
                 "content": "Design architecture based on the FilesystemIR provided."
             }, {
                 "role": "user",
-                "content": f"Design architecture for this FilesystemIR:\n{json.dumps(fs_ir, indent=2, ensure_ascii=False)}"
-            }],
-            "fs_ir": fs_ir,
+                "content": f"Design architecture for this FilesystemIR with structured JSON output:\n{json.dumps(state['fs_ir'], indent=2, ensure_ascii=False)}"
+            }]
         }
+        context = ArchitecturePlannerContext(
+            fs_ir=state["fs_ir"]
+        )
 
-        return self._invoke(payload)
-
+        return self._invoke(payload, context=context)

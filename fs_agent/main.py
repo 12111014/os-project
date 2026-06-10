@@ -30,7 +30,6 @@ def main():
 
     try:
         user_request = load_user_request("user_request.md")
-        print(f"✓ Loaded user request from user_request.md ({len(user_request)} chars)")
     except (FileNotFoundError, ValueError) as e:
         print(f"{e}")
         print("Using default request...")

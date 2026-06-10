@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
 
-from ..agents.requirement_paser_agent import RequirementParserAgent
-from ..schemas.fs_ir import FilesystemIR
+from fs_agent.agents.requirement_parser_agent import RequirementParserAgent
+from fs_agent.config import Config
+from fs_agent.schemas.fs_ir import FilesystemIR
 
+DEBUG = Config().debug
 
 def requirement_parser_node(state: dict):
     run_id = state["run_id"]
@@ -18,7 +20,7 @@ def requirement_parser_node(state: dict):
     try:
         print(f"\n[requirement_parser] Parsing user request ({len(user_request)} chars)...")
         agent = RequirementParserAgent()
-        result = agent.perform_task(user_request)
+        result = agent.perform_task(state)
 
         # 将 Agent 输出转换为 FilesystemIR
         fs_ir = FilesystemIR(
@@ -31,16 +33,6 @@ def requirement_parser_node(state: dict):
             operations=result.operations,
             validation=result.validation.model_dump(),
         )
-
-        issues = []
-        if result.warnings:
-            # issues.extend([
-            #     {"type": "requirement_warning", "summary": w}
-            #     for w in result.warnings
-            # ])
-            print(f"[requirement_parser] Warnings: {len(result.warnings)}")
-            for w in result.warnings:
-                print(f"  ⚠ {w}")
 
         # 保存置信度和推理过程供调试
         print(f"[requirement_parser] Confidence: {result.confidence:.2f}")
@@ -57,10 +49,10 @@ def requirement_parser_node(state: dict):
             encoding="utf-8"
         )
 
-        print(f"[requirement_parser] ✓ Parsed successfully")
-        print(f"[requirement_parser]   Storage: {fs_ir.storage['type']}")
-        print(f"[requirement_parser]   Operations: {len(fs_ir.operations)}")
-        print(f"[requirement_parser]   Features: {sum(1 for v in fs_ir.features.values() if v)} enabled\n")
+        if DEBUG:
+            print(f"[requirement_parser] ✓ Parsed successfully")
+            print(f"[requirement_parser]   Storage: {fs_ir.storage}")
+            print(f"[requirement_parser]   Operations: {len(fs_ir.operations)}")
 
     except Exception as exc:
         # 降级：使用默认 IR

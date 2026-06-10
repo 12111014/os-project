@@ -1,9 +1,12 @@
+from dataclasses import dataclass
 from deepagents import create_deep_agent, DeepAgentState
 from langchain.agents.structured_output import ToolStrategy
 from langchain.chat_models import init_chat_model
 
 from fs_agent.config import Config
-from fs_agent.schemas.req_agent_outputs import RequirementParserResult
+from typing import Literal
+from pydantic import BaseModel, Field
+
 
 REQUIREMENT_PARSER_AGENT_PROMPT = """
 You are a Filesystem Requirements Engineer specializing in FUSE filesystems.
@@ -56,6 +59,90 @@ Do not include any prose outside the JSON structure.
 
 DEBUG = Config().debug
 
+@dataclass
+class RequirementParserContext:
+    user_request: str
+
+class StorageSpec(BaseModel):
+    type: str = Field(
+        default="memory",
+        description="Storage backend type: memory, image_file, or passthrough"
+    )
+    block_size: int = Field(default=4096, description="Block size in bytes")
+    image_size_mb: int = Field(default=1024, description="Image size in MB for image_file storage")
+
+
+class FeatureSpec(BaseModel):
+    directories: bool = Field(default=True, description="Support directories")
+    symlink: bool = Field(default=False, description="Support symbolic links")
+    hardlink: bool = Field(default=False, description="Support hard links")
+    permissions: Literal["none", "basic"] = Field(default="basic", description="Permission model")
+    journaling: bool = Field(default=False, description="Enable journaling")
+    xattrs: bool = Field(default=False, description="Support extended attributes")
+
+
+class ValidationSpec(BaseModel):
+    posix_smoke: bool = Field(default=True, description="Run POSIX smoke tests")
+    pytest: bool = Field(default=True, description="Run pytest suite")
+    fio: bool = Field(default=False, description="Run fio benchmarks")
+    filebench: bool = Field(default=False, description="Run filebench benchmarks")
+    xfstests: bool = Field(default=False, description="Run xfstests suite")
+
+
+class RequirementParserResult(BaseModel):
+    success: bool = Field(description="Whether parsing succeeded")
+
+    name: str = Field(
+        default="agentfs",
+        description="Filesystem name"
+    )
+
+    target: Literal["fuse"] = Field(
+        default="fuse",
+        description="Target framework"
+    )
+
+    language: Literal["c", "rust", "python"] = Field(
+        default="c",
+        description="Implementation language"
+    )
+
+    backend: Literal["libfuse3"] = Field(
+        default="libfuse3",
+        description="Backend library"
+    )
+
+    storage: StorageSpec = Field(
+        default_factory=StorageSpec,
+        description="Storage backend specification"
+    )
+
+    features: FeatureSpec = Field(
+        default_factory=FeatureSpec,
+        description="Feature flags"
+    )
+
+    operations: list[str] = Field(
+        default_factory=list,
+        description="List of FUSE operations to implement"
+    )
+
+    validation: ValidationSpec = Field(
+        default_factory=ValidationSpec,
+        description="Validation and testing configuration"
+    )
+
+    confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score of the parsing result"
+    )
+
+    reasoning: str = Field(
+        default="",
+        description="Explanation of design decisions"
+    )
 
 class RequirementParserState(DeepAgentState):
     user_request: str
@@ -68,7 +155,6 @@ class RequirementParserAgent:
 
         self.model = init_chat_model(
             model=cfg.models.get("requirement_parser", "deepseek:deepseek-v4-flash"),
-            api_key=cfg.api_keys.get("deepseek_key"),
             extra_body={"thinking": {"type": "disabled"}}
         )
 
@@ -80,17 +166,17 @@ class RequirementParserAgent:
             response_format=ToolStrategy(RequirementParserResult),
         )
 
-    def _invoke(self, payload):
+    def _invoke(self, payload, context):
         """Invoke the agent with debug support."""
         if DEBUG:
             print("requirement parser agent invoking")
             from fs_agent.utils.stream_print import print_clean_deepagent_stream
-            result = print_clean_deepagent_stream(self.agent, payload, True)
+            result = print_clean_deepagent_stream(self.agent, payload, context, True)
         else:
-            result = self.agent.invoke(payload)
+            result = self.agent.invoke(payload, context=context)
         return result["structured_response"]
 
-    def perform_task(self, user_request: str) -> RequirementParserResult:
+    def perform_task(self, state) -> RequirementParserResult:
         """Parse user request into structured FilesystemIR."""
 
         payload = {
@@ -99,9 +185,11 @@ class RequirementParserAgent:
                 "content": "Parse the user request into structured FilesystemIR."
             }, {
                 "role": "user",
-                "content": user_request
-            }],
-            "user_request": user_request,
+                "content": state["user_request"]
+            }]
         }
+        context=RequirementParserContext(
+            user_request=state["user_request"]
+        )
 
-        return self._invoke(payload)
+        return self._invoke(payload, context)
