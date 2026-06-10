@@ -34,13 +34,13 @@ code generator agent result:
         "build_dir": state["build_dir"],
         "fs_binary": state["fs_binary"],
         "artifacts": {
-            "codegen_method": result.method,
+            "generated_files": result.files,
         },
-        "patches": [
-            {
-                "id": f"codegen-{result.method}",
-                "summary": result.summary,
-                "files_changed": result.files,
-            }
-        ],
+        # "patches": [
+        #     {
+        #         "id": f"codegen-{result.method}",
+        #         "summary": result.summary,
+        #         "files_changed": result.files,
+        #     }
+        # ],
     }

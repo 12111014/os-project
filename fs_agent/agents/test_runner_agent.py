@@ -20,6 +20,7 @@ Your job:
 - Inspect the mounted FUSE filesystem before testing.
 - Run only policy-enabled suites unless an extra diagnostic check is needed to explain a failure.
 - Prefer the uploaded templates inside provided test_template_dir over inventing new tests.
+- Based on fs_ir, develop new and necessary tests not in test templates.
 - Copy or render every script/workload you run inside provided test_run_dir.
 - Write test logs inside provided test_log_dir.
 - Separate correctness failures from benchmark degradation.

@@ -41,7 +41,7 @@ def route_after_debug(state: FSAgentState) -> str:
 
     # MVP 阶段：debug 不修代码，可以直接 cleanup
     # 后续接入 patch 后，改成回到 build_runner
-    return "cleanup"
+    return state.get("debug_next_phase")
 
 
 

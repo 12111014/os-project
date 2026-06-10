@@ -27,6 +27,8 @@ def main():
     print("Final phase:", final_state.get("current_phase"))
     print("Report:", final_state.get("final_report_path"))
     print("Summary:", final_state.get("final_summary"))
+    
+    print(f"Final state: \n{final_state}")
 
 
 if __name__ == "__main__":

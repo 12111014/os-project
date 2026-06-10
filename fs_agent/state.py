@@ -31,6 +31,7 @@ class FSAgentState(TypedDict, total=False):
     build_status: Literal["not_started", "passed", "failed"]
     mount_status: Literal["not_started", "mounted", "failed", "cleaned"]
     test_status: Literal["not_started", "passed", "failed", "degraded"]
+    debug_status: Literal["diagnosed", "patched", "failed"]
 
     # 日志与产物
     logs: Annotated[dict[str, str], operator.or_]
@@ -43,6 +44,10 @@ class FSAgentState(TypedDict, total=False):
     # 控制循环
     retry_count: int
     max_retries: int
+    
+    # debug
+    debug_history: Annotated[list[dict[str, Any]], operator.add]
+    debug_next_phase: Literal["build_runner", "mount_runner", "test_runner", "cleanup"]
 
     # 最终报告
     final_report_path: str
