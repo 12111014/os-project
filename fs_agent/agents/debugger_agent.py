@@ -140,6 +140,7 @@ class DebuggerAgent:
             artifacts=artifacts,
             issues=issues,
             patches=patches,
+            debug_history=debug_history,
         )
 
         instructions = (
