@@ -21,7 +21,7 @@ fi
 
     manager.exec(sandbox, cmd, timeout=30)
     
-    # manager.destroy(sandbox)
+    manager.destroy(sandbox)
 
     return {
         "mount_status": "cleaned",

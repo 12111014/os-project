@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from deepagents import create_deep_agent, DeepAgentState
-from langchain.agents.structured_output import ToolStrategy, ProviderStrategy
-from langchain.chat_models import init_chat_model
+from deepagents import create_deep_agent
+from langchain.agents.structured_output import ToolStrategy
 import json
 
 from fs_agent.config import Config
+from fs_agent.utils.system_prompt import build_system_prompt
 from pydantic import BaseModel, Field
 
 ARCHITECTURE_PLANNER_AGENT_PROMPT = """
@@ -18,6 +18,7 @@ Your job:
 - Identify API boundaries between modules.
 - State explicit limitations and out-of-scope features.
 - Provide confidence score and reasoning for architectural decisions.
+- Return valid result matches the structured output schema.
 
 Architecture patterns by storage type:
 
@@ -56,25 +57,21 @@ Process:
 3. Choose appropriate architecture pattern.
 4. Design modules and data structures.
 5. Generate the complete ArchitecturePlanResult JSON.
-
-Output ONLY valid JSON matching the ArchitecturePlanResult schema.
-Do not include any prose outside the JSON structure.
 """
 
 DEBUG = Config().debug
+
 
 @dataclass
 class ArchitecturePlannerContext:
     fs_ir: dict
 
-class ArchitecturePlannerState(DeepAgentState):
-    """State for architecture planner agent."""
-    fs_ir: dict
 
 class ModuleSpec(BaseModel):
     name: str = Field(description="Module name")
     responsibility: str = Field(description="Module responsibility")
-    files: list[str] = Field(default_factory=list, description="Source files in this module")
+    files: list[str] = Field(default_factory=list,
+                             description="Source files in this module")
 
 
 class DataStructureSpec(BaseModel):
@@ -82,9 +79,8 @@ class DataStructureSpec(BaseModel):
     description: str = Field(description="Purpose and design")
     fields: list[str] = Field(default_factory=list, description="Key fields")
 
-class ArchitecturePlannerResult(BaseModel):
-    success: bool = Field(description="Whether architecture design succeeded")
 
+class ArchitecturePlannerResult(BaseModel):
     modules: list[ModuleSpec] = Field(
         default_factory=list,
         description="Module decomposition"
@@ -130,18 +126,6 @@ class ArchitecturePlannerResult(BaseModel):
         description="Error handling pattern"
     )
 
-    confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Confidence score of the architecture design"
-    )
-
-    reasoning: str = Field(
-        default="",
-        description="Explanation of architectural decisions"
-    )
-
 
 class ArchitecturePlannerAgent:
     """DeepAgent-based architecture planner that doesn't need a backend."""
@@ -149,49 +133,26 @@ class ArchitecturePlannerAgent:
     def __init__(self):
         cfg = Config()
 
-        self.model = init_chat_model(
-            model=cfg.models.get("architecture_planner", "deepseek:deepseek-v4-flash"),
-            extra_body={"thinking": {"type": "disabled"}}
-        )
+        self.model = cfg.build_model("architecture_planner")
 
         self.agent = create_deep_agent(
             model=self.model,
             backend=None,
-            system_prompt=ARCHITECTURE_PLANNER_AGENT_PROMPT,
-            state_schema=ArchitecturePlannerState,
+            system_prompt=build_system_prompt(
+                ARCHITECTURE_PLANNER_AGENT_PROMPT),
+            context_schema=ArchitecturePlannerContext,
             response_format=ToolStrategy(ArchitecturePlannerResult)
         )
 
     def _invoke(self, payload, context):
-        """Invoke the agent with debug support and retry if structured_response is missing."""
-        max_retries = 3
+        if DEBUG:
+            from fs_agent.utils.stream_print import print_clean_deepagent_stream
+            result = print_clean_deepagent_stream(
+                self.agent, payload, context, True)
+        else:
+            result = self.agent.invoke(payload, context=context)
 
-        for attempt in range(1, max_retries + 1):
-            if DEBUG:
-                print(f"architecture planner agent invoking (attempt {attempt}/{max_retries})")
-                from fs_agent.utils.stream_print import print_clean_deepagent_stream
-                result = print_clean_deepagent_stream(self.agent, payload, context, True)
-            else:
-                result = self.agent.invoke(payload, context=context)
-
-            # 检查是否包含 structured_response
-            if isinstance(result, dict) and "structured_response" in result:
-                print(f"requirement parser agent done: got structured_response on attempt {attempt}")
-                return result["structured_response"]
-
-            if isinstance(result, ArchitecturePlannerResult):
-                return result
-
-            # 如果没有获取到结构化响应，记录警告并重试
-            print(f"[WARNING] Attempt {attempt}: structured_response not found in result (type: {type(result)})")
-            if attempt < max_retries:
-                print(f"[WARNING] Retrying... ({attempt + 1}/{max_retries})")
-
-        # 所有重试都失败后，抛出异常或返回 None
-        raise RuntimeError(
-            f"Failed to get structured_response after {max_retries} attempts. "
-            f"Last result type: {type(result)}"
-        )
+        return result["structured_response"]
 
     def perform_task(self, state) -> ArchitecturePlannerResult:
         """Design architecture based on FilesystemIR."""

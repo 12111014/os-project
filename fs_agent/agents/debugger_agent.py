@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
 from deepagents import create_deep_agent
@@ -9,6 +8,7 @@ from pydantic import BaseModel, Field
 from fs_agent.config import Config
 from fs_agent.utils.sandbox_backend import SandboxBackend
 from fs_agent.utils.sandbox_manager import SandboxRef
+from fs_agent.utils.system_prompt import build_system_prompt
 
 
 DEBUGGER_AGENT_PROMPT = """
@@ -22,7 +22,7 @@ Your job:
 - If the fix is clear and local to generated source files, patch the generated source using the provided sandbox tools.
 - If the fix is not clear, do not guess. Return a diagnosis and concrete next inspection steps.
 - Preserve the expected binary path, mountpoint, log paths, and generated source directory.
-- Determine next pipeline phase after your debugging.
+- After your debug, determine next pipeline phase. Do not do jobs that other pipeline agents designed to do.
 - Return only valid JSON.
 
 Do not use host paths.
@@ -53,6 +53,7 @@ class DebuggerContext:
     issues: list[dict[str, Any]]
     patches: list[dict[str, Any]]
     debug_history: list[dict[str, Any]]
+    retry_count: int
 
 
 class DebugIssue(BaseModel):
@@ -95,7 +96,7 @@ class DebuggerAgent:
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
-            system_prompt=DEBUGGER_AGENT_PROMPT,
+            system_prompt=build_system_prompt(DEBUGGER_AGENT_PROMPT),
             context_schema=DebuggerContext,
             response_format=ToolStrategy(DebuggerResult),
         )
@@ -123,6 +124,7 @@ class DebuggerAgent:
         issues = state.get("issues", [])
         patches = state.get("patches", [])
         debug_history = state.get("debug_hisory", [])
+        retry_count=state.get("retry_count")
 
         context = DebuggerContext(
             workspace=workspace,
@@ -132,19 +134,21 @@ class DebuggerAgent:
             build_dir=build_dir,
             fs_binary=fs_binary,
             mountpoint=mountpoint,
-            current_phase=state.get("current_phase", ""),
-            build_status=state.get("build_status", "not_started"),
-            mount_status=state.get("mount_status", "not_started"),
-            test_status=state.get("test_status", "not_started"),
+            current_phase=state.get("current_phase"),
+            build_status=state.get("build_status"),
+            mount_status=state.get("mount_status"),
+            test_status=state.get("test_status"),
             logs=logs,
             artifacts=artifacts,
             issues=issues,
             patches=patches,
             debug_history=debug_history,
+            retry_count=retry_count,
         )
 
         instructions = (
             "Debug the generated FUSE filesystem pipeline.\n"
+            f"This is the {retry_count}-th debug retry (0-th means the first try)"
             f"- workspace: {workspace}\n"
             f"- source directory: {source_dir}\n"
             f"- build directory: {build_dir}\n"

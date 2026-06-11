@@ -4,12 +4,12 @@ from typing import Any, Literal
 
 from deepagents import create_deep_agent
 from langchain.agents.structured_output import ToolStrategy
-from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 
 from fs_agent.config import Config
 from fs_agent.utils.sandbox_backend import SandboxBackend
 from fs_agent.utils.sandbox_manager import SandboxRef
+from fs_agent.utils.system_prompt import build_system_prompt
 
 
 TEST_RUNNER_AGENT_PROMPT = """
@@ -57,6 +57,7 @@ class TestRunnerContext:
     test_run_dir: str
     test_log_dir: str
     test_result_dir: str
+    retry_count: int
 
 
 class TestCaseResult(BaseModel):
@@ -107,7 +108,7 @@ class TestRunnerAgent:
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
-            system_prompt=TEST_RUNNER_AGENT_PROMPT,
+            system_prompt=build_system_prompt(TEST_RUNNER_AGENT_PROMPT),
             context_schema=TestRunnerContext,
             response_format=ToolStrategy(TestAgentResult),
         )
@@ -131,27 +132,27 @@ class TestRunnerAgent:
             Path(state.get("workspace", "/workspace")) / "logs" / "tests")
         test_result_dir = str(
             Path(state.get("workspace", "/workspace")) / "results" / "tests")
+        retry_count=state.get("retry_count")
 
         context = TestRunnerContext(
             workspace=state.get("workspace"),
             mountpoint=state.get("mountpoint"),
             fs_binary=state.get("fs_binary"),
             fs_type=state.get("fs_type"),
-            fuse_log_path=state.get("logs").get(
-                "fuse", "/workspace/logs/fuse.log"),
-            fuse_pid_path=state.get("artifacts").get(
-                "fuse_pid", "/workspace/run/fuse.pid"),
+            fuse_log_path=state.get("logs").get("fuse"),
+            fuse_pid_path=state.get("artifacts").get("fuse_pid"),
             fs_ir=state.get("fs_ir"),
-            test_policy=state.get("test_policy") or _default_test_policy(
-                state.get("fs_ir", {})),
+            test_policy=state.get("test_policy"),
             test_template_dir=test_template_dir,
             test_run_dir=test_run_dir,
             test_log_dir=test_log_dir,
             test_result_dir=test_result_dir,
+            retry_count=retry_count,
         )
 
         instructions = (
             f"Test the FUSE filesystem.\n"
+            f"This is the {retry_count}-th retry after debugging (0-th means the first try)."
             f"- test template directory: {test_template_dir}\n"
             f"- run tests in directory: {test_run_dir}\n"
             f"- write the test logs in: {test_log_dir}\n"

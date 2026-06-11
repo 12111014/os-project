@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Literal
-from deepagents import create_deep_agent, DeepAgentState
+from deepagents import create_deep_agent
 from langchain.agents.structured_output import ToolStrategy
 from pathlib import Path
 
@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 from fs_agent.config import Config
 from fs_agent.utils.sandbox_backend import SandboxBackend
-from fs_agent.utils.sandbox_manager import sandbox_from_state, SandboxRef
+from fs_agent.utils.sandbox_manager import SandboxRef
+from fs_agent.utils.system_prompt import build_system_prompt
 
 MOUNT_RUNNER_AGENT_PROMPT = """
 You are the Mount Agent for a generated FUSE filesystem. Your backend is running inside a Docker sandbox.
@@ -36,6 +37,7 @@ DEBUG = Config().debug
 class MountRunnerContext:
     workspace: str
     source_dir: str
+    fs_binary: str
     mountpoint: str
     log_path: str
     pid_path: str
@@ -114,7 +116,7 @@ class MountRunnerAgent:
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
-            system_prompt=MOUNT_RUNNER_AGENT_PROMPT,
+            system_prompt=build_system_prompt(MOUNT_RUNNER_AGENT_PROMPT),
             context_schema=MountRunnerContext,
             response_format=ToolStrategy(MountAgentResult),
         )
@@ -129,19 +131,28 @@ class MountRunnerAgent:
         return result["structured_response"]
 
     def perform_task(self, state, message=""):
+        retry_count = state.get("retry_count")
+        
+        instructions = (
+            f"Mount the generated FUSE filesystem in specified path."
+            f"This is the {retry_count}-th retry after debugging (0-th means the first try)."
+        )
+        
         payload = {
             "messages": [{
                 "role": "system",
                 "content": "Start to perform the mount task using the state provided."
+                
             }, {
                 "role": "user",
-                "content": message
+                "content": instructions + (f"\n\n{message}" if message else ""),
             }]
         }
         context = MountRunnerContext(
             workspace=state["workspace"],
             source_dir=state["source_root"],
             mountpoint=state["mountpoint"],
+            fs_binary=state.get("fs_binary"),
             log_path=str(
                 Path(state["workspace"]) / "logs" / "fuse.log"),
             pid_path=str(Path(state["workspace"]) / "run" / "fuse.pid"))

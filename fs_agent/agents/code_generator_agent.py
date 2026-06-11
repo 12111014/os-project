@@ -9,6 +9,7 @@ from fs_agent.config import Config
 from fs_agent.utils.sandbox_backend import SandboxBackend
 from fs_agent.utils.sandbox_manager import SandboxRef
 from fs_agent.utils.codegen import build_user_prompt
+from fs_agent.utils.system_prompt import build_system_prompt
 
 CODE_GENERATOR_AGENT_PROMPT = """
 You are the Code Generator Agent for a FUSE filesystem. You run inside a Docker
@@ -101,7 +102,7 @@ class CodeGeneratorAgent:
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
-            system_prompt=CODE_GENERATOR_AGENT_PROMPT,
+            system_prompt=build_system_prompt(CODE_GENERATOR_AGENT_PROMPT),
             context_schema=CodeGeneratorContext,
             response_format=ToolStrategy(CodeGeneratorResult),
         )

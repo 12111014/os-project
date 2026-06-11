@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from fs_agent.config import Config
 from fs_agent.utils.sandbox_backend import SandboxBackend
 from fs_agent.utils.sandbox_manager import SandboxRef
+from fs_agent.utils.system_prompt import build_system_prompt
 
 BUILD_RUNNER_AGENT_PROMPT = """
 You are the Build Agent for a generated FUSE filesystem. You run inside a Docker
@@ -44,6 +45,7 @@ class BuildRunnerContext:
     build_dir: str
     fs_binary: str
     log_path: str
+    retry_count: int
 
 
 class BuildIssue(BaseModel):
@@ -93,7 +95,7 @@ class BuildRunnerAgent:
         self.agent = create_deep_agent(
             model=self.model,
             backend=self.backend,
-            system_prompt=BUILD_RUNNER_AGENT_PROMPT,
+            system_prompt=build_system_prompt(BUILD_RUNNER_AGENT_PROMPT),
             context_schema=BuildRunnerContext,
             response_format=ToolStrategy(BuildRunnerResult),
         )
@@ -112,9 +114,11 @@ class BuildRunnerAgent:
         build_dir = state["build_dir"]
         fs_binary = state["fs_binary"]
         log_path = str(Path(state["workspace"]) / "logs" / "build.log")
+        retry_count = state["retry_count"]
 
         instructions = (
             f"Build the FUSE filesystem.\n"
+            f"This is the {retry_count}-th retry after debugging (0-th means the first try)."
             f"- source directory: {source_dir}\n"
             f"- build directory: {build_dir}\n"
             f"- normalise the produced binary to: {fs_binary}\n"
@@ -135,5 +139,6 @@ class BuildRunnerAgent:
             build_dir=build_dir,
             fs_binary=fs_binary,
             log_path=log_path,
+            retry_count=retry_count,
         )
         return self._invoke(payload, context=context)

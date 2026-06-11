@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict, Literal, Optional, Any
+from typing import TypedDict, Literal, Any
 from typing_extensions import Annotated
 import operator
 
@@ -31,7 +31,7 @@ class FSAgentState(TypedDict, total=False):
     build_status: Literal["not_started", "passed", "failed"]
     mount_status: Literal["not_started", "mounted", "failed", "cleaned"]
     test_status: Literal["not_started", "passed", "failed", "degraded"]
-    debug_status: Literal["diagnosed", "patched", "failed"]
+    debug_status: Literal["not_started", "diagnosed", "patched", "failed"]
 
     # 日志与产物
     logs: Annotated[dict[str, str], operator.or_]

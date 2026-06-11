@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from deepagents import create_deep_agent, DeepAgentState
+from deepagents import create_deep_agent
 from langchain.agents.structured_output import ToolStrategy
-from langchain.chat_models import init_chat_model
 
 from fs_agent.config import Config
 from typing import Literal
 from pydantic import BaseModel, Field
+from fs_agent.utils.system_prompt import build_system_prompt
 
 
 REQUIREMENT_PARSER_AGENT_PROMPT = """
@@ -59,9 +59,11 @@ Do not include any prose outside the JSON structure.
 
 DEBUG = Config().debug
 
+
 @dataclass
 class RequirementParserContext:
     user_request: str
+
 
 class StorageSpec(BaseModel):
     type: str = Field(
@@ -69,23 +71,28 @@ class StorageSpec(BaseModel):
         description="Storage backend type: memory, image_file, or passthrough"
     )
     block_size: int = Field(default=4096, description="Block size in bytes")
-    image_size_mb: int = Field(default=1024, description="Image size in MB for image_file storage")
+    image_size_mb: int = Field(
+        default=1024, description="Image size in MB for image_file storage")
 
 
 class FeatureSpec(BaseModel):
     directories: bool = Field(default=True, description="Support directories")
     symlink: bool = Field(default=False, description="Support symbolic links")
     hardlink: bool = Field(default=False, description="Support hard links")
-    permissions: Literal["none", "basic"] = Field(default="basic", description="Permission model")
+    permissions: Literal["none", "basic"] = Field(
+        default="basic", description="Permission model")
     journaling: bool = Field(default=False, description="Enable journaling")
-    xattrs: bool = Field(default=False, description="Support extended attributes")
+    xattrs: bool = Field(
+        default=False, description="Support extended attributes")
 
 
 class ValidationSpec(BaseModel):
-    posix_smoke: bool = Field(default=True, description="Run POSIX smoke tests")
+    posix_smoke: bool = Field(
+        default=True, description="Run POSIX smoke tests")
     pytest: bool = Field(default=True, description="Run pytest suite")
     fio: bool = Field(default=False, description="Run fio benchmarks")
-    filebench: bool = Field(default=False, description="Run filebench benchmarks")
+    filebench: bool = Field(
+        default=False, description="Run filebench benchmarks")
     xfstests: bool = Field(default=False, description="Run xfstests suite")
 
 
@@ -144,25 +151,19 @@ class RequirementParserResult(BaseModel):
         description="Explanation of design decisions"
     )
 
-class RequirementParserState(DeepAgentState):
-    user_request: str
-
 
 class RequirementParserAgent:
 
     def __init__(self):
         cfg = Config()
 
-        self.model = init_chat_model(
-            model=cfg.models.get("requirement_parser", "deepseek:deepseek-v4-flash"),
-            extra_body={"thinking": {"type": "disabled"}}
-        )
+        self.model = cfg.build_model("requirement_parser")
 
         self.agent = create_deep_agent(
             model=self.model,
             backend=None,
-            system_prompt=REQUIREMENT_PARSER_AGENT_PROMPT,
-            state_schema=RequirementParserState,
+            system_prompt=build_system_prompt(REQUIREMENT_PARSER_AGENT_PROMPT),
+            context_schema=RequirementParserContext,
             response_format=ToolStrategy(RequirementParserResult),
         )
 
@@ -171,7 +172,8 @@ class RequirementParserAgent:
         if DEBUG:
             print("requirement parser agent invoking")
             from fs_agent.utils.stream_print import print_clean_deepagent_stream
-            result = print_clean_deepagent_stream(self.agent, payload, context, True)
+            result = print_clean_deepagent_stream(
+                self.agent, payload, context, True)
         else:
             result = self.agent.invoke(payload, context=context)
         return result["structured_response"]
@@ -188,7 +190,7 @@ class RequirementParserAgent:
                 "content": state["user_request"]
             }]
         }
-        context=RequirementParserContext(
+        context = RequirementParserContext(
             user_request=state["user_request"]
         )
 

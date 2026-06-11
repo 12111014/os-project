@@ -26,6 +26,7 @@ build runner agent result:
             "current_phase": "build_passed",
             "build_status": "passed",
             "logs": {"build": result.log_path},
+            "artifacts": {"fs_binary": result.binary_path}
         }
 
     return {

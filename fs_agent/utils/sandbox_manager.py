@@ -89,7 +89,7 @@ class SandboxManager:
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            return ExecResult(124, proc.stdout, f"Command timed out after {timeout} seconds")
+            return ExecResult(124, "", f"[Sandbox] Command timed out after {timeout} seconds. 120 is the default timeout of sandbox.")
 
         return ExecResult(proc.returncode, proc.stdout, proc.stderr)
 

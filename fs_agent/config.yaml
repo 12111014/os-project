@@ -5,13 +5,14 @@
 #   OPENAI_BASE_URL  = https://dashscope.aliyuncs.com/compatible-mode/v1
 #   OPENAI_API_BASE  = https://dashscope.aliyuncs.com/compatible-mode/v1
 models:
-  mount_runner: "deepseek:deepseek-v4-pro"
-  code_generator: "deepseek:deepseek-v4-pro"
-  build_runner: "deepseek:deepseek-v4-pro"
-  test_runner: "deepseek:deepseek-v4-pro"
-  debugger: "deepseek:deepseek-v4-pro"
   requirement_parser: "deepseek:deepseek-v4-pro"
   architecture_planner: "deepseek:deepseek-v4-pro"
+  code_generator: "deepseek:deepseek-v4-pro"
+  build_runner: "deepseek:deepseek-v4-pro"
+  mount_runner: "deepseek:deepseek-v4-pro"
+  test_runner: "deepseek:deepseek-v4-pro"
+  debugger: "deepseek:deepseek-v4-pro"
+  report_generator: "deepseek:deepseek-v4-pro"
 
 # Optional kwargs forwarded to init_chat_model as `extra_body`.
 # Leave empty ({}) for a provider-agnostic call that works with both DeepSeek

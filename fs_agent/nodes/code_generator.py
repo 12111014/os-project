@@ -36,11 +36,4 @@ code generator agent result:
         "artifacts": {
             "generated_files": result.files,
         },
-        # "patches": [
-        #     {
-        #         "id": f"codegen-{result.method}",
-        #         "summary": result.summary,
-        #         "files_changed": result.files,
-        #     }
-        # ],
     }
