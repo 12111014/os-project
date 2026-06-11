@@ -28,7 +28,7 @@ def route_after_mount(state: FSAgentState) -> str:
 
 def route_after_test(state: FSAgentState) -> str:
     if state.get("test_status") == "passed":
-        return "cleanup"
+        return "report_generator"
     return "debugger"
 
 
@@ -37,7 +37,7 @@ def route_after_debug(state: FSAgentState) -> str:
     max_retries = state.get("max_retries", 2)
 
     if retry_count >= max_retries:
-        return "cleanup"
+        return "report_generator"
 
     # MVP 阶段：debug 不修代码，可以直接 cleanup
     # 后续接入 patch 后，改成回到 build_runner
@@ -87,7 +87,7 @@ def build_graph():
         "test_runner",
         route_after_test,
         {
-            "cleanup": "cleanup",
+            "report_generator": "report_generator",
             "debugger": "debugger",
         },
     )
@@ -99,12 +99,12 @@ def build_graph():
             "build_runner": "build_runner",
             "mount_runner": "mount_runner",
             "test_runner": "test_runner",
-            "cleanup": "cleanup",
+            "report_generator": "report_generator",
         },
     )
 
-    graph.add_edge("cleanup", "report_generator")
-    graph.add_edge("report_generator", END)
+    graph.add_edge("report_generator", "cleanup")
+    graph.add_edge("cleanup", END)
     
     compiled_graph = graph.compile()
     

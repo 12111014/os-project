@@ -47,7 +47,7 @@ class FSAgentState(TypedDict, total=False):
     
     # debug
     debug_history: Annotated[list[dict[str, Any]], operator.add]
-    debug_next_phase: Literal["build_runner", "mount_runner", "test_runner", "cleanup"]
+    debug_next_phase: Literal["build_runner", "mount_runner", "test_runner", "report_generator"]
 
     # 最终报告
     final_report_path: str

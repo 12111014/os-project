@@ -28,20 +28,12 @@ def main():
 
     run_id = uuid.uuid4().hex[:8]
 
-    try:
-        user_request = load_user_request("user_request.md")
-    except (FileNotFoundError, ValueError) as e:
-        print(f"{e}")
-        print("Using default request...")
-        user_request = (
-            "生成一个基于 FUSE/libfuse3 的简单内存文件系统，"
-            "支持 create/read/write/readdir/mkdir/unlink/rename/truncate。"
-        )
+    user_request = load_user_request("user_request.md")
 
     initial_state = {
         "run_id": run_id,
         "user_request": user_request,
-        "max_retries": 2,
+        "max_retries": 5,
         "issues": [],
         "patches": [],
     }

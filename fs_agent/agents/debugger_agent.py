@@ -13,7 +13,6 @@ from fs_agent.utils.system_prompt import build_system_prompt
 
 DEBUGGER_AGENT_PROMPT = """
 You are the Debugger Agent for a generated FUSE filesystem pipeline. Your backend is running inside a Docker sandbox.
-The pipeline contains code_generator, build_runner, mount_runner, test_runner, cleanup, etc.
 
 Your job:
 - Inspect the current pipeline state, source tree, build log, mount log, test logs, and recorded issues.
@@ -25,6 +24,7 @@ Your job:
 - After your debug, determine next pipeline phase. Do not do jobs that other pipeline agents designed to do.
 - Return only valid JSON.
 
+Do not do jobs assigned to other pipeline agents. e.g. build the patched source or mounted the modified filesystem. 
 Do not use host paths.
 Do not use docker commands.
 Use only the provided sandbox tools.
@@ -79,7 +79,7 @@ class DebuggerResult(BaseModel):
         default="", description="Most likely root cause of the failing phase.")
     diagnosis: str = Field(
         default="", description="Human-readable debugging summary.")
-    next_phase: Literal["build_runner", "mount_runner", "test_runner", "cleanup"] = Field(
+    next_phase: Literal["build_runner", "mount_runner", "test_runner", "report_generator"] = Field(
         default="cleanup",
         description="Pipeline phase that should run next.",
     )
