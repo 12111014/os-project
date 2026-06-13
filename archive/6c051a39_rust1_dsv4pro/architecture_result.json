@@ -1,0 +1,180 @@
+{
+  "modules": [
+    {
+      "name": "main",
+      "responsibility": "CLI entry point: parse mount arguments, initialize the filesystem, register FUSE operations table, and enter the libfuse3 event loop.",
+      "files": [
+        "src/main.rs"
+      ]
+    },
+    {
+      "name": "filesystem",
+      "responsibility": "Top-level in-memory filesystem state container. Owns the inode table, directory tree, and extended attributes store. All FUSE operation implementations delegate here through a single RwLock-protected instance.",
+      "files": [
+        "src/filesystem.rs"
+      ]
+    },
+    {
+      "name": "inode",
+      "responsibility": "Inode allocation, deallocation, and attribute management. Defines Inode struct with metadata (mode, uid, gid, size, timestamps, nlink) and the per-inode data buffer (Vec<u8> for regular files, empty for dirs/symlinks).",
+      "files": [
+        "src/inode.rs"
+      ]
+    },
+    {
+      "name": "directory",
+      "responsibility": "Directory entry management: mapping directory inode → set of (name, child_inode) pairs. Supports lookup, add_entry, remove_entry, and readdir iteration.",
+      "files": [
+        "src/directory.rs"
+      ]
+    },
+    {
+      "name": "xattr",
+      "responsibility": "Extended attributes store: per-inode HashMap<String, Vec<u8>>. Provides getxattr, setxattr, listxattr, removexattr operations with size and namespace validation.",
+      "files": [
+        "src/xattr.rs"
+      ]
+    },
+    {
+      "name": "symlink",
+      "responsibility": "Symlink target storage and retrieval. Each symlink inode stores a target path string. Exposes readlink (resolve) and symlink (create) helpers.",
+      "files": [
+        "src/symlink.rs"
+      ]
+    },
+    {
+      "name": "path",
+      "responsibility": "Path resolution utilities: validate paths, split into components, resolve parent directory, check for conflicts, and enforce naming constraints (no empty names, no '/' in names, max component length).",
+      "files": [
+        "src/path.rs"
+      ]
+    },
+    {
+      "name": "permissions",
+      "responsibility": "Basic permission checking: owner/group/other read/write/execute bits against caller uid/gid. Used by open, create, mkdir, unlink, rename, chmod, and getattr (for access decisions).",
+      "files": [
+        "src/permissions.rs"
+      ]
+    }
+  ],
+  "data_model": {
+    "Root inode": "Inode 1 is always the root directory `/`. Created at filesystem init, never deleted.",
+    "Inode lifecycle": "Inodes are allocated sequentially (monotonically increasing u64). Freed inodes are NOT reused — this simplifies concurrency and avoids ABA issues.",
+    "File data": "Regular file content is stored as Vec<u8> inside the Inode struct. Writes resize the vec; truncate truncates it.",
+    "Directory data": "A directory inode maps to a BTreeMap<String, u64> (name → child inode number). BTreeMap gives sorted readdir for free.",
+    "Symlink data": "A symlink inode stores a single String target path.",
+    "Extended attributes": "Per-inode HashMap<String, Vec<u8>> stored in a parallel BTreeMap<u64, HashMap<String, Vec<u8>>> inside the filesystem container.",
+    "File handle": "open/create return a u64 handle that maps to an OpenFileHandle struct tracking the inode number, open flags, and current seek offset. Handles are stored in a slab allocator."
+  },
+  "data_structures": [
+    {
+      "name": "Inode",
+      "description": "Core inode metadata and data container. One per filesystem object (file, directory, symlink).",
+      "fields": [
+        "ino: u64 — unique inode number",
+        "mode: u32 — file type + permission bits (S_IFREG | S_IFDIR | S_IFLNK | perm)",
+        "uid: u32 — owner user id",
+        "gid: u32 — owning group id",
+        "size: u64 — logical file size in bytes",
+        "nlink: u32 — hard link count (dirs count self+children entries; not used for hardlinks since feature is disabled)",
+        "atime: Duration — last access time",
+        "mtime: Duration — last modification time",
+        "ctime: Duration — last status change time",
+        "data: InodeData — union of File(Vec<u8>), Directory, or Symlink(String)"
+      ]
+    },
+    {
+      "name": "OpenFileHandle",
+      "description": "Tracks an open file's state: which inode, access flags, and current read/write cursor position.",
+      "fields": [
+        "fh: u64 — file handle id (index into slab)",
+        "ino: u64 — inode this handle refers to",
+        "flags: i32 — O_RDONLY / O_WRONLY / O_RDWR / O_APPEND etc.",
+        "offset: u64 — current seek position for read/write"
+      ]
+    },
+    {
+      "name": "Filesystem",
+      "description": "Top-level filesystem state. Single instance wrapped in RwLock<Filesystem>.",
+      "fields": [
+        "inodes: BTreeMap<u64, Inode> — all live inodes keyed by inode number",
+        "next_ino: u64 — next unused inode number",
+        "dirs: BTreeMap<u64, BTreeMap<String, u64>> — directory entries per directory inode",
+        "xattrs: BTreeMap<u64, HashMap<String, Vec<u8>>> — extended attributes per inode",
+        "handles: Slab<OpenFileHandle> — slab-allocated open file handles",
+        "uid: u32 — mount-time caller uid",
+        "gid: u32 — mount-time caller gid"
+      ]
+    },
+    {
+      "name": "InodeData",
+      "description": "Enum covering the three supported inode types. Keeps memory compact.",
+      "fields": [
+        "File(Vec<u8>) — raw byte buffer for regular files",
+        "Directory — unit variant; child entries stored in Filesystem.dirs",
+        "Symlink(String) — target path string"
+      ]
+    },
+    {
+      "name": "StatFs",
+      "description": "Canonical representation of statfs/statvfs data returned to the kernel.",
+      "fields": [
+        "blocks: u64",
+        "bfree: u64",
+        "bavail: u64",
+        "files: u64",
+        "ffree: u64",
+        "bsize: u32",
+        "namemax: u32"
+      ]
+    }
+  ],
+  "fuse_operations": [
+    "getattr",
+    "readdir",
+    "mkdir",
+    "rmdir",
+    "create",
+    "open",
+    "read",
+    "write",
+    "unlink",
+    "rename",
+    "truncate",
+    "chmod",
+    "symlink",
+    "readlink",
+    "utimens",
+    "fsync",
+    "flush",
+    "release",
+    "statfs"
+  ],
+  "api_boundaries": [
+    "main → filesystem: mount options → Filesystem::new(); then pass &Filesystem to FUSE session.",
+    "filesystem → inode: inode_alloc(mode, uid, gid) → u64; get_inode(ino) → &Inode; write_data(ino, offset, buf); truncate(ino, size).",
+    "filesystem → directory: add_entry(dir_ino, name, child_ino); remove_entry(dir_ino, name); lookup(dir_ino, name) → Option<u64>; list_entries(dir_ino) → Vec<(String, u64)>.",
+    "filesystem → xattr: get_xattr(ino, key); set_xattr(ino, key, val); list_xattr(ino); remove_xattr(ino, key).",
+    "filesystem → symlink: create_symlink(ino, target) → u64; read_link(ino) → String.",
+    "filesystem → permissions: can_read(inode, uid, gid) → bool; can_write(inode, uid, gid) → bool; can_execute(inode, uid, gid) → bool; can_search_dir(dir_ino, uid, gid) → bool.",
+    "filesystem → path: resolve(path) → Option<u64>; resolve_parent(path) → Option<(u64, String)>; validate_name(name) → Result<()>.",
+    "All FUSE op callbacks get &RwLock<Filesystem>; acquire read lock for queries, write lock for mutations."
+  ],
+  "limitations": [
+    "No persistence — all data lost on unmount.",
+    "Hard links not supported (nlink is maintained for directory accounting only).",
+    "No journaling / crash recovery.",
+    "No mmap support.",
+    "Inode numbers are never recycled (monotonic counter).",
+    "No access control lists (ACLs), only traditional Unix rwx bits.",
+    "No extended attribute namespace enforcement beyond basic prefix checks (user.*, trusted.*, security.*).",
+    "Maximum file size limited by available memory (Vec<u8>).",
+    "No quota enforcement.",
+    "No read-only mount mode.",
+    "Maximum path component length: 255 bytes.",
+    "No rename across different parent directories with atomic guarantees beyond lock-held scope."
+  ],
+  "threading_model": "RwLock-based concurrent access (global RwLock<Filesystem>)",
+  "memory_management": "arena/boxed allocation; Drop-based cleanup on unmount; all inodes freed when filesystem goes out of scope",
+  "error_handling": "errno-based via libc::E* constants; each FUSE op returns c_int with negated errno on failure"
+}

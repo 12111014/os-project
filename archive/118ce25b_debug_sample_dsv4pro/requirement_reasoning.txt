@@ -1,0 +1,35 @@
+Confidence: 0.95
+
+Reasoning:
+用户明确要求"简单内存文件系统"，触发 storage.type = "memory" 规则。要求"不需要持久化存储"和"内存占用尽可能小"进一步确认 memory 类型。block_size 使用默认 4096。
+
+features 分析：
+- "创建、删除目录" → directories = true
+- "支持符号链接" → symlink = true
+- "支持文件权限管理" → permissions = "basic"（基础 POSIX 权限，非 full ACL）
+- "支持扩展属性" → xattrs = true
+- 未提及硬链接 → hardlink = false
+- 未提及日志/崩溃一致性 → journaling = false
+
+operations 分析：
+- 基本: getattr, readdir, open, read, write（始终包含）
+- "创建...文件" + "删除文件" → create, unlink, release
+- "创建、删除目录" → mkdir, rmdir
+- "重命名文件和目录" → rename
+- 写入隐含需要 truncate 支持 → truncate
+- 权限管理 → chmod
+- "支持并发访问"隐含需要 fsync/flush → fsync, flush
+- 符号链接 → symlink, readlink
+- 扩展属性 → setxattr, getxattr, listxattr, removexattr
+
+validation 分析：
+- "需要通过 POSIX 基础测试" → posix_smoke = true
+- "支持并发访问" + 测试场景 → pytest = true（Python 测试套件覆盖并发场景）
+- 未提及性能基准测试 → fio = false, filebench = false
+- 非生产级 Linux 兼容性要求 → xfstests = false
+
+未声明的合理推断：
+- language: C（libfuse3 原生绑定，性能最优，内存占用最小）
+- 小规模测试场景不需要 image_file 或 passthrough
+
+无歧义或冲突。confidence 0.95 因并发访问的具体程度（线程数/进程数）未明确量化，但不影响核心 IR 结构。

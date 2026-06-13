@@ -1,0 +1,138 @@
+{
+  "modules": [
+    {
+      "name": "main",
+      "responsibility": "Initialize FUSE session, parse command-line arguments, wire up fuse_operations struct, and start the event loop.",
+      "files": [
+        "simplefs.c"
+      ]
+    },
+    {
+      "name": "fuse_ops",
+      "responsibility": "Implement all FUSE high-level operation callbacks (getattr, readdir, open, read, write, create, unlink, mkdir, rmdir, rename, symlink, readlink, truncate, chmod, setxattr, getxattr, listxattr, removexattr, fsync, release). Each callback delegates to the appropriate internal module.",
+      "files": [
+        "fuse_ops.c",
+        "fuse_ops.h"
+      ]
+    },
+    {
+      "name": "inode_table",
+      "responsibility": "Manage the inode lifecycle: allocation, lookup by path, lookup by inode number, reference counting, and deallocation. Maintain the global inode number → inode object mapping.",
+      "files": [
+        "inode_table.c",
+        "inode_table.h"
+      ]
+    },
+    {
+      "name": "dir_ops",
+      "responsibility": "Implement directory entry management: add entry, remove entry, lookup child by name, enumerate entries (for readdir). Each directory inode owns a sorted linked list of dirent structures.",
+      "files": [
+        "dir_ops.c",
+        "dir_ops.h"
+      ]
+    },
+    {
+      "name": "storage_backend",
+      "responsibility": "Manage per-file in-memory byte buffers: allocation, resizing (for write/truncate), and retrieval (for read). Uses a simple dynamic bytearray per regular file inode.",
+      "files": [
+        "storage_backend.c",
+        "storage_backend.h"
+      ]
+    },
+    {
+      "name": "path_utils",
+      "responsibility": "Path normalization, parent extraction, basename extraction, path component validation, and symlink resolution (bounded loop to prevent infinite chains).",
+      "files": [
+        "path_utils.c",
+        "path_utils.h"
+      ]
+    }
+  ],
+  "data_model": {
+    "inode_table_hashmap": "Global hash map keyed by inode number (uint64_t), storing pointer to inode_t. Supports O(1) lookup by inode number.",
+    "path_cache": "Optional: a per-operation path→inode lookup can be done by walking from root via dir_ops, or a dedicated path→inode LRU cache can accelerate repeated lookups. Design choice: walk-from-root per call (simpler, no cache invalidation), with symlink-aware resolution in path_utils.",
+    "per_file_bytearray": "Each regular file inode owns a dynamically allocated byte buffer (uint8_t*) that grows via realloc. Size tracked in the inode's size field. Reads beyond EOF return 0 bytes. Writes beyond current size expand the buffer."
+  },
+  "data_structures": [
+    {
+      "name": "inode_t",
+      "description": "Core inode object representing a file, directory, or symlink in the virtual filesystem.",
+      "fields": [
+        "uint64_t ino — unique inode number (monotonically increasing)",
+        "mode_t mode — file type + permission bits (S_IFREG, S_IFDIR, S_IFLNK)",
+        "nlink_t nlink — hard link count (always 1; hardlinks not supported)",
+        "uid_t uid — owner user ID",
+        "gid_t gid — owner group ID",
+        "off_t size — logical file size in bytes",
+        "struct timespec atime, mtime, ctime — access, modify, change timestamps",
+        "uint8_t *data — byte buffer (valid for S_IFREG)",
+        "char *target — symlink target path (valid for S_IFLNK, heap-allocated)",
+        "struct xattr_node *xattrs — linked list of extended attributes",
+        "int refcount — reference count for open/release tracking"
+      ]
+    },
+    {
+      "name": "dirent_t",
+      "description": "Directory entry within a directory inode's linked list.",
+      "fields": [
+        "char *name — entry name (heap-allocated, null-terminated)",
+        "uint64_t ino — inode number of the child",
+        "struct dirent *next — next sibling entry (sorted alphabetically)"
+      ]
+    },
+    {
+      "name": "xattr_node_t",
+      "description": "Node in a singly-linked list of extended attributes attached to an inode.",
+      "fields": [
+        "char *name — xattr name (heap-allocated)",
+        "uint8_t *value — raw value buffer (heap-allocated)",
+        "size_t value_len — value length in bytes",
+        "struct xattr_node *next — next xattr node"
+      ]
+    }
+  ],
+  "fuse_operations": [
+    "getattr",
+    "readdir",
+    "open",
+    "read",
+    "write",
+    "create",
+    "unlink",
+    "mkdir",
+    "rmdir",
+    "rename",
+    "symlink",
+    "readlink",
+    "truncate",
+    "chmod",
+    "setxattr",
+    "getxattr",
+    "listxattr",
+    "removexattr",
+    "fsync",
+    "release"
+  ],
+  "api_boundaries": [
+    "fuse_ops → inode_table: inode_alloc(mode, uid, gid), inode_lookup(ino), inode_lookup_by_path(path), inode_put(ino), inode_unlink(ino). fuse_ops uses these to fetch and modify inodes for every FUSE callback.",
+    "fuse_ops → dir_ops: dir_add(parent_ino, name, child_ino), dir_remove(parent_ino, name), dir_lookup(parent_ino, name), dir_readdir(parent_ino, offset, buf, filler). Called from mkdir, create, unlink, rmdir, rename, readdir, symlink.",
+    "fuse_ops → storage_backend: storage_read(ino, offset, buf, size), storage_write(ino, offset, buf, size), storage_truncate(ino, new_size). Called from read, write, truncate callbacks. Internally accesses inode_t.data buffer.",
+    "fuse_ops → path_utils: path_normalize(path), path_parent(path), path_basename(path), path_resolve_symlink(path). All path-taking FUSE callbacks normalize first, then resolve symlinks component-wise.",
+    "Module inter-dependencies: fuse_ops depends on all other modules. path_utils is pure (no dependencies). dir_ops depends on inode_table for inode_t access. storage_backend depends on inode_table for inode_t access."
+  ],
+  "limitations": [
+    "Hard links not supported (nlink always 1 for files).",
+    "No journaling or crash recovery — data is purely in-memory and lost on unmount.",
+    "No access control lists (ACLs) — only basic Unix permission bits (owner/group/other rwx).",
+    "Static block_size (4096) is not enforced internally; storage uses dynamic realloc, not fixed-block allocation. Block_size is advisory for FUSE statfs.",
+    "Image size limit (128 MB) is not enforced as a hard cap; the memory filesystem can grow beyond this. A configurable upper bound could be added.",
+    "No atime update policy — atime is set but not automatically bumped on read (no strictatime/relatime/noatime semantics).",
+    "Symlink resolution depth bounded at SYMLOOP_MAX (e.g., 40) to prevent infinite loops.",
+    "Directory entry limit: per-directory linear scan for lookup (O(n)). Large directories (thousands of entries) may be slow.",
+    "No rename across mount points (RENAME_EXCHANGE, RENAME_NOREPLACE flags not handled).",
+    "No write-back caching — writes are immediate. fsync/fdatasync are no-ops that return success."
+  ],
+  "threading_model": "Single global mutex (pthread_mutex_t) protecting the entire inode table and all inode operations. All FUSE operations acquire this lock at entry and release at exit. This is the simplest correct approach for a memory filesystem. For higher concurrency, the design allows future migration to per-inode rw-locks or RCU-based lookups without changing the module interfaces.",
+  "memory_management": "Dynamic allocation using malloc/free/realloc. Inode objects and their associated data buffers are heap-allocated. Reference counting: each inode has a refcount incremented on open/lookup and decremented on release/forget. When refcount reaches zero and nlink is zero, the inode is freed. Directory entries and xattr nodes are freed individually at removal time. No garbage collection sweep — deallocation is immediate and deterministic.",
+  "error_handling": "Standard errno-based error reporting. Each FUSE callback returns -errno on failure (negative errno value). Internal module functions return 0 on success and -errno on failure, or NULL for pointer-returning functions with errno set. Common errors: ENOENT (no such file/directory), EEXIST (file/directory already exists), ENOTDIR (path component not a directory), EISDIR (attempted file operation on directory), ENOSPC (out of memory), ENOTEMPTY (rmdir on non-empty directory), EACCES (permission denied), ELOOP (symlink loop), ENAMETOOLONG (path too long), ENOMEM (malloc failure)."
+}

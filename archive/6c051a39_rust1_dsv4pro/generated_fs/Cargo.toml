@@ -1,0 +1,12 @@
+[package]
+name = "agentfs"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "agentfs"
+path = "src/main.rs"
+
+[dependencies]
+fuser = "0.17"
+libc = "0.2"

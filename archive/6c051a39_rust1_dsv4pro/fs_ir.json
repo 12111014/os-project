@@ -1,0 +1,52 @@
+{
+  "name": "agentfs",
+  "target": "fuse",
+  "language": "rust",
+  "backend": "libfuse3",
+  "storage": {
+    "type": "memory"
+  },
+  "features": {
+    "directories": true,
+    "symlink": true,
+    "hardlink": false,
+    "permissions": "basic",
+    "journaling": false,
+    "xattrs": true
+  },
+  "operations": [
+    "getattr",
+    "readdir",
+    "mkdir",
+    "rmdir",
+    "create",
+    "open",
+    "read",
+    "write",
+    "unlink",
+    "rename",
+    "truncate",
+    "chmod",
+    "symlink",
+    "readlink",
+    "utimens",
+    "fsync",
+    "flush",
+    "release",
+    "statfs"
+  ],
+  "validation": {
+    "posix_smoke": true,
+    "pytest": true,
+    "fio": false,
+    "fsmark": false,
+    "xfstests": false
+  },
+  "extra_field": [
+    "KV store backend (e.g., HashMap or BTreeMap)",
+    "In-memory only, no persistence",
+    "Minimal memory footprint",
+    "Concurrent access support via RwLock/Mutex",
+    "Minimal third-party dependencies (libfuse only)"
+  ]
+}

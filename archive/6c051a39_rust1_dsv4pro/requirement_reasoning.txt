@@ -1,0 +1,33 @@
+Confidence: 0.95
+
+Reasoning:
+The user explicitly requests:
+1. **Storage**: K-V based memory filesystem — maps to storage.type="memory". User states "不需要持久化存储", confirming no image_file or passthrough.
+2. **Language/Runtime**: Rust with libfuse3 — maps to language="rust", backend="libfuse3". User says "尽量不要使用第三方库（除了libfuse）", so minimal dependencies.
+3. **Features**:
+   - directories=True (explicit: 创建/删除目录, 列出目录内容)
+   - symlink=True (explicit: 支持符号链接)
+   - hardlink=False (not mentioned)
+   - permissions="basic" (explicit: 支持文件权限管理, but not full ACL/POSIX ACL — basic covers chmod/ownership)
+   - journaling=False (in-memory, no crash consistency needed)
+   - xattrs=True (explicit: 支持扩展属性)
+4. **Operations**: Derived from feature requirements:
+   - Core: getattr, readdir, open, read, write
+   - File lifecycle: create, unlink, truncate
+   - Directory: mkdir, rmdir
+   - Rename: rename
+   - Symlink: symlink, readlink
+   - Permissions: chmod
+   - Metadata: utimens
+   - Flush/sync: fsync, flush, release
+   - Stat: statfs
+   - chown omitted (basic permissions, not full)
+   - link omitted (no hardlinks)
+5. **Validation**:
+   - posix_smoke=True (explicit: POSIX 基础测试)
+   - pytest=True (general compatibility test, enabled by default for non-trivial fs)
+   - fio=False (small-scale test scenario, not production perf)
+   - fsmark=False (same reason)
+   - xfstests=False (not required for small-scale testing, overkill)
+6. **Extra fields**: KV-store backend, in-memory, concurrency via RwLock, minimal dependencies — all stated explicitly.
+7. **Confidence 0.95**: All major decisions are directly stated. Minor ambiguity: whether "文件权限管理" implies full or basic permissions — basic is the reasonable default for small-scale testing. Concurrent access implies RwLock/Mutex but exact mechanism is architecture-level detail.
