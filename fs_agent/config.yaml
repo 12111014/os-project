@@ -5,21 +5,30 @@
 #   OPENAI_BASE_URL  = https://dashscope.aliyuncs.com/compatible-mode/v1
 #   OPENAI_API_BASE  = https://dashscope.aliyuncs.com/compatible-mode/v1
 models:
-  requirement_parser: "deepseek:deepseek-v4-pro"
-  architecture_planner: "deepseek:deepseek-v4-pro"
-  code_generator: "deepseek:deepseek-v4-pro"
-  build_runner: "deepseek:deepseek-v4-pro"
-  mount_runner: "deepseek:deepseek-v4-pro"
-  test_runner: "deepseek:deepseek-v4-pro"
-  debugger: "deepseek:deepseek-v4-pro"
-  report_generator: "deepseek:deepseek-v4-pro"
+  # requirement_parser: "deepseek:deepseek-v4-pro"
+  # architecture_planner: "deepseek:deepseek-v4-pro"
+  # code_generator: "deepseek:deepseek-v4-pro"
+  # build_runner: "deepseek:deepseek-v4-pro"
+  # mount_runner: "deepseek:deepseek-v4-pro"
+  # test_runner: "deepseek:deepseek-v4-pro"
+  # debugger: "deepseek:deepseek-v4-pro"
+  # report_generator: "deepseek:deepseek-v4-pro"
+  requirement_parser: "openai:qwen3.7-max"
+  architecture_planner: "openai:qwen3.7-max"
+  code_generator: "openai:qwen3.7-max"
+  build_runner: "openai:qwen3.7-max"
+  mount_runner: "openai:qwen3.7-max"
+  test_runner: "openai:qwen3.7-max"
+  debugger: "openai:qwen3.7-max"
+  report_generator: "openai:qwen3.7-max"
 
 # Optional kwargs forwarded to init_chat_model as `extra_body`.
 # Leave empty ({}) for a provider-agnostic call that works with both DeepSeek
 # and Qwen. To turn off reasoning, set the provider-specific option here:
 #   Qwen (DashScope):  {"enable_thinking": false}
 #   DeepSeek:          {"thinking": {"type": "disabled"}}
-model_extra_body: {"thinking": {"type": "disabled"}}
+# model_extra_body: {"thinking": {"type": "disabled"}}
+model_extra_body: {"enable_thinking": false}
 
 debug: true
 # debug: false

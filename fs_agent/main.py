@@ -28,12 +28,13 @@ def main():
 
     run_id = uuid.uuid4().hex[:8]
 
-    user_request = load_user_request("user_request.md")
+    user_request = load_user_request(Path(__file__).parent / "user_request.md")
+    # user_request = load_user_request("./user_request.md")
 
     initial_state = {
         "run_id": run_id,
         "user_request": user_request,
-        "max_retries": 5,
+        "max_retries": 10,
         "issues": [],
         "patches": [],
     }
