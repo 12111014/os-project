@@ -20,21 +20,16 @@ Your job:
   and the libfuse reference examples provided in the user message.
 - Generate a complete, buildable user-space FUSE filesystem and write every
   file into the source directory given to you using the `write_file` tool.
-- You MUST produce at least one C source file and a `Makefile`.
 
 Hard requirements for the generated code:
-- Use FUSE_USE_VERSION 31 and the high-level API only (#include <fuse.h>,
-  struct fuse_operations, fuse_main).
+- The libfuse version in sandbox is 3.14, determine appropriate API version to use. Use the high-level API only.
 - The built binary must be named `agentfs` and mount in the foreground with:
   ./agentfs -f <mountpoint>
 - Match the exact callback signatures used by the reference examples for this
-  libfuse version (e.g. getattr/chmod/truncate take a `struct fuse_file_info *`,
-  readdir takes `enum fuse_readdir_flags`, rename takes `unsigned int flags`).
+  libfuse version.
 - Be thread-safe: guard shared state with a mutex.
 - Return correct negative errno values on failure. No memory corruption.
 - Do not invent APIs. If unsure, mirror the reference code / skeleton.
-- The Makefile must build the `agentfs` target using
-  `$(shell pkg-config --cflags fuse3)` and `$(shell pkg-config --libs fuse3)`.
 
 Prefer adapting the known-good skeleton over writing from scratch.
 
@@ -124,7 +119,7 @@ class CodeGeneratorAgent:
         grounding = build_user_prompt(fs_ir, architecture_plan)
         instructions = (
             f"Write all generated files into the source directory: {source_dir}\n"
-            f"Use paths relative to that directory (e.g. the C source and `Makefile`).\n\n"
+            f"Use paths relative to that directory (e.g. the source and `Makefile`).\n\n"
             f"{grounding}"
         )
 

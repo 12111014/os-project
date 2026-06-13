@@ -38,7 +38,7 @@ def select_reference_examples(fs_ir: dict, max_chars: int = 24000) -> dict[str, 
 
     Each source is truncated to ``max_chars`` to keep the prompt bounded.
     """
-    storage_type = (fs_ir.get("storage", {}) or {}).get("type", "memory")
+    storage_type = (fs_ir.get("storage", {}) or {}).get("type")
     names = _REFERENCE_MAP.get(storage_type, _DEFAULT_REFERENCES)
     out: dict[str, str] = {}
     for name in names:
@@ -94,7 +94,7 @@ def build_user_prompt(fs_ir: dict, architecture_plan: dict) -> str:
         "# Task\n"
         "Generate a complete, buildable FUSE filesystem that satisfies the "
         "specification above. Implement every operation listed in "
-        "`operations`. Write the C source file(s) and a `Makefile` "
+        "`operations`. Write the source file(s) and a `Makefile` "
         "(target `agentfs`) into the source directory using your file tools."
     )
     return "\n".join(parts)

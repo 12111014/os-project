@@ -1,0 +1,56 @@
+{
+  "fs_ir": {
+    "name": "agentfs",
+    "target": "fuse",
+    "language": "rust",
+    "backend": "libfuse3",
+    "storage": {
+      "type": "memory"
+    },
+    "features": {
+      "directories": true,
+      "symlink": true,
+      "hardlink": false,
+      "permissions": "basic",
+      "journaling": false,
+      "xattrs": true
+    },
+    "operations": [
+      "getattr",
+      "readdir",
+      "mkdir",
+      "rmdir",
+      "create",
+      "open",
+      "read",
+      "write",
+      "unlink",
+      "rename",
+      "truncate",
+      "chmod",
+      "symlink",
+      "readlink",
+      "utimens",
+      "fsync",
+      "flush",
+      "release",
+      "statfs"
+    ],
+    "validation": {
+      "posix_smoke": true,
+      "pytest": true,
+      "fio": false,
+      "fsmark": false,
+      "xfstests": false
+    },
+    "extra_field": [
+      "KV store backend (e.g., HashMap or BTreeMap)",
+      "In-memory only, no persistence",
+      "Minimal memory footprint",
+      "Concurrent access support via RwLock/Mutex",
+      "Minimal third-party dependencies (libfuse only)"
+    ]
+  },
+  "confidence": 0.95,
+  "reasoning": "The user explicitly requests:\n1. **Storage**: K-V based memory filesystem — maps to storage.type=\"memory\". User states \"不需要持久化存储\", confirming no image_file or passthrough.\n2. **Language/Runtime**: Rust with libfuse3 — maps to language=\"rust\", backend=\"libfuse3\". User says \"尽量不要使用第三方库（除了libfuse）\", so minimal dependencies.\n3. **Features**:\n   - directories=True (explicit: 创建/删除目录, 列出目录内容)\n   - symlink=True (explicit: 支持符号链接)\n   - hardlink=False (not mentioned)\n   - permissions=\"basic\" (explicit: 支持文件权限管理, but not full ACL/POSIX ACL — basic covers chmod/ownership)\n   - journaling=False (in-memory, no crash consistency needed)\n   - xattrs=True (explicit: 支持扩展属性)\n4. **Operations**: Derived from feature requirements:\n   - Core: getattr, readdir, open, read, write\n   - File lifecycle: create, unlink, truncate\n   - Directory: mkdir, rmdir\n   - Rename: rename\n   - Symlink: symlink, readlink\n   - Permissions: chmod\n   - Metadata: utimens\n   - Flush/sync: fsync, flush, release\n   - Stat: statfs\n   - chown omitted (basic permissions, not full)\n   - link omitted (no hardlinks)\n5. **Validation**:\n   - posix_smoke=True (explicit: POSIX 基础测试)\n   - pytest=True (general compatibility test, enabled by default for non-trivial fs)\n   - fio=False (small-scale test scenario, not production perf)\n   - fsmark=False (same reason)\n   - xfstests=False (not required for small-scale testing, overkill)\n6. **Extra fields**: KV-store backend, in-memory, concurrency via RwLock, minimal dependencies — all stated explicitly.\n7. **Confidence 0.95**: All major decisions are directly stated. Minor ambiguity: whether \"文件权限管理\" implies full or basic permissions — basic is the reasonable default for small-scale testing. Concurrent access implies RwLock/Mutex but exact mechanism is architecture-level detail."
+}

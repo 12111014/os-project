@@ -1,0 +1,52 @@
+{
+  "success": true,
+  "name": "agentfs",
+  "target": "fuse",
+  "language": "c",
+  "backend": "libfuse3",
+  "storage": {
+    "type": "memory",
+    "block_size": 4096,
+    "image_size_mb": 1024
+  },
+  "features": {
+    "directories": true,
+    "symlink": true,
+    "hardlink": false,
+    "permissions": "basic",
+    "journaling": false,
+    "xattrs": true
+  },
+  "operations": [
+    "getattr",
+    "readdir",
+    "open",
+    "read",
+    "write",
+    "create",
+    "unlink",
+    "mkdir",
+    "rmdir",
+    "rename",
+    "truncate",
+    "chmod",
+    "fsync",
+    "symlink",
+    "readlink",
+    "setxattr",
+    "getxattr",
+    "listxattr",
+    "removexattr",
+    "release",
+    "flush"
+  ],
+  "validation": {
+    "posix_smoke": true,
+    "pytest": true,
+    "fio": false,
+    "filebench": false,
+    "xfstests": false
+  },
+  "confidence": 0.95,
+  "reasoning": "用户明确要求\"简单内存文件系统\"，触发 storage.type = \"memory\" 规则。要求\"不需要持久化存储\"和\"内存占用尽可能小\"进一步确认 memory 类型。block_size 使用默认 4096。\n\nfeatures 分析：\n- \"创建、删除目录\" → directories = true\n- \"支持符号链接\" → symlink = true\n- \"支持文件权限管理\" → permissions = \"basic\"（基础 POSIX 权限，非 full ACL）\n- \"支持扩展属性\" → xattrs = true\n- 未提及硬链接 → hardlink = false\n- 未提及日志/崩溃一致性 → journaling = false\n\noperations 分析：\n- 基本: getattr, readdir, open, read, write（始终包含）\n- \"创建...文件\" + \"删除文件\" → create, unlink, release\n- \"创建、删除目录\" → mkdir, rmdir\n- \"重命名文件和目录\" → rename\n- 写入隐含需要 truncate 支持 → truncate\n- 权限管理 → chmod\n- \"支持并发访问\"隐含需要 fsync/flush → fsync, flush\n- 符号链接 → symlink, readlink\n- 扩展属性 → setxattr, getxattr, listxattr, removexattr\n\nvalidation 分析：\n- \"需要通过 POSIX 基础测试\" → posix_smoke = true\n- \"支持并发访问\" + 测试场景 → pytest = true（Python 测试套件覆盖并发场景）\n- 未提及性能基准测试 → fio = false, filebench = false\n- 非生产级 Linux 兼容性要求 → xfstests = false\n\n未声明的合理推断：\n- language: C（libfuse3 原生绑定，性能最优，内存占用最小）\n- 小规模测试场景不需要 image_file 或 passthrough\n\n无歧义或冲突。confidence 0.95 因并发访问的具体程度（线程数/进程数）未明确量化，但不影响核心 IR 结构。"
+}

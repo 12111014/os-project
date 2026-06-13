@@ -21,7 +21,7 @@ class SandboxBackend(BaseSandbox):
         self.manager = SandboxManager()
 
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
-        result = self.manager.exec(self.sandbox, command, timeout=timeout if timeout else 120)
+        result = self.manager.exec(self.sandbox, command, timeout=120 if not timeout or timeout > 120 else timeout)
         return ExecuteResponse(output=result.stdout + result.stderr, exit_code=result.code, truncated=False)
 
     def upload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:

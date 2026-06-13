@@ -6,6 +6,7 @@ from fs_agent.config import Config
 from typing import Literal
 from pydantic import BaseModel, Field
 from fs_agent.utils.system_prompt import build_system_prompt
+from fs_agent.schemas.fs_ir import FilesystemIR
 
 
 REQUIREMENT_PARSER_AGENT_PROMPT = """
@@ -67,12 +68,11 @@ class RequirementParserContext:
 
 class StorageSpec(BaseModel):
     type: str = Field(
-        default="memory",
-        description="Storage backend type: memory, image_file, or passthrough"
+        description="Storage backend type."
     )
-    block_size: int = Field(default=4096, description="Block size in bytes")
-    image_size_mb: int = Field(
-        default=1024, description="Image size in MB for image_file storage")
+    # block_size: int = Field(default=4096, description="Block size in bytes")
+    # image_size_mb: int = Field(
+    #     default=1024, description="Image size in MB for image_file storage")
 
 
 class FeatureSpec(BaseModel):
@@ -91,53 +91,15 @@ class ValidationSpec(BaseModel):
         default=True, description="Run POSIX smoke tests")
     pytest: bool = Field(default=True, description="Run pytest suite")
     fio: bool = Field(default=False, description="Run fio benchmarks")
-    filebench: bool = Field(
+    fsmark: bool = Field(
         default=False, description="Run filebench benchmarks")
     xfstests: bool = Field(default=False, description="Run xfstests suite")
 
 
 class RequirementParserResult(BaseModel):
-    success: bool = Field(description="Whether parsing succeeded")
+    # success: bool = Field(description="Whether parsing succeeded")
 
-    name: str = Field(
-        default="agentfs",
-        description="Filesystem name"
-    )
-
-    target: Literal["fuse"] = Field(
-        default="fuse",
-        description="Target framework"
-    )
-
-    language: Literal["c", "rust", "python"] = Field(
-        default="c",
-        description="Implementation language"
-    )
-
-    backend: Literal["libfuse3"] = Field(
-        default="libfuse3",
-        description="Backend library"
-    )
-
-    storage: StorageSpec = Field(
-        default_factory=StorageSpec,
-        description="Storage backend specification"
-    )
-
-    features: FeatureSpec = Field(
-        default_factory=FeatureSpec,
-        description="Feature flags"
-    )
-
-    operations: list[str] = Field(
-        default_factory=list,
-        description="List of FUSE operations to implement"
-    )
-
-    validation: ValidationSpec = Field(
-        default_factory=ValidationSpec,
-        description="Validation and testing configuration"
-    )
+    fs_ir: FilesystemIR = Field(default_factory=FilesystemIR, description="The filesystem IR")
 
     confidence: float = Field(
         default=0.0,

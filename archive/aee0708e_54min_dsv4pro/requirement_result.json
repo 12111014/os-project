@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "name": "simplefs",
+  "target": "fuse",
+  "language": "c",
+  "backend": "libfuse3",
+  "storage": {
+    "type": "memory",
+    "block_size": 4096,
+    "image_size_mb": 128
+  },
+  "features": {
+    "directories": true,
+    "symlink": true,
+    "hardlink": false,
+    "permissions": "basic",
+    "journaling": false,
+    "xattrs": true
+  },
+  "operations": [
+    "getattr",
+    "readdir",
+    "open",
+    "read",
+    "write",
+    "create",
+    "unlink",
+    "mkdir",
+    "rmdir",
+    "rename",
+    "symlink",
+    "readlink",
+    "truncate",
+    "chmod",
+    "setxattr",
+    "getxattr",
+    "listxattr",
+    "removexattr",
+    "fsync",
+    "release"
+  ],
+  "validation": {
+    "posix_smoke": true,
+    "pytest": true,
+    "fio": false,
+    "filebench": false,
+    "xfstests": false
+  },
+  "confidence": 0.95,
+  "reasoning": "User requests a simple in-memory FUSE filesystem with libfuse3. Storage type is \"memory\" since no persistence is needed and memory footprint should be minimal. Image size set to 128MB — sufficient for small-scale testing while keeping memory low. Block size 4096 (standard). directories=true (mkdir/rmdir requested). symlink=true (explicitly requested). hardlink=false (not mentioned). permissions=\"basic\" — user requested file permission management which maps to basic permission model (chmod, uid/gid stored but no ACLs). journaling=false (no crash consistency needed for in-memory). xattrs=true (explicitly requested). Operations: core set (getattr, readdir, open, read, write) plus create/unlink (file create/delete), mkdir/rmdir (directory operations), rename (explicitly requested), symlink/readlink (symbolic link support), truncate (implied by write), chmod (permissions), setxattr/getxattr/listxattr/removexattr (extended attributes), fsync (sync semantics), release (file close). Validation: posix_smoke=true (POSIX basic tests required), pytest=true (concurrency testing needed — mentioned \"并发访问\"), fio/filebench/xfstests=false (small-scale test scenario, no performance benchmarks or full Linux compatibility needed). Confidence 0.95: all features clearly stated; minor ambiguity around specific concurrency test approach resolved by enabling pytest suite."
+}

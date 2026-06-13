@@ -1,0 +1,48 @@
+{
+  "name": "simplefs",
+  "target": "fuse",
+  "language": "c",
+  "backend": "libfuse3",
+  "storage": {
+    "type": "memory",
+    "block_size": 4096,
+    "image_size_mb": 128
+  },
+  "features": {
+    "directories": true,
+    "symlink": true,
+    "hardlink": false,
+    "permissions": "basic",
+    "journaling": false,
+    "xattrs": true
+  },
+  "operations": [
+    "getattr",
+    "readdir",
+    "open",
+    "read",
+    "write",
+    "create",
+    "unlink",
+    "mkdir",
+    "rmdir",
+    "rename",
+    "symlink",
+    "readlink",
+    "truncate",
+    "chmod",
+    "setxattr",
+    "getxattr",
+    "listxattr",
+    "removexattr",
+    "fsync",
+    "release"
+  ],
+  "validation": {
+    "posix_smoke": true,
+    "pytest": true,
+    "fio": false,
+    "filebench": false,
+    "xfstests": false
+  }
+}

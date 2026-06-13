@@ -1,0 +1,154 @@
+{
+  "success": true,
+  "modules": [
+    {
+      "name": "main",
+      "responsibility": "Parse command-line arguments (mountpoint, debug flags), initialize the global filesystem state (inode table, root inode, mutex), register FUSE operations struct, and call fuse_main_real. Handle SIGTERM/SIGINT for graceful shutdown.",
+      "files": [
+        "src/main.c"
+      ]
+    },
+    {
+      "name": "fuse_ops",
+      "responsibility": "Implement all 13 FUSE operation callbacks (getattr, readdir, mkdir, rmdir, create, open, read, write, unlink, rename, truncate, chmod, fsync). Each callback validates inputs, acquires the global lock, delegates to the appropriate internal module, and returns an errno or success. The open/create callbacks allocate file_handle_t.",
+      "files": [
+        "src/fuse_ops.c",
+        "src/fuse_ops.h"
+      ]
+    },
+    {
+      "name": "inode_table",
+      "responsibility": "Manage the global GLib hash table mapping inode numbers to inode_t pointers. Provide inode_alloc (returns new inode with fresh ino), inode_lookup (by ino), inode_free (remove and deallocate), and inode_iter (for readdir). Internal thread-safety is guaranteed by the caller holding the global lock.",
+      "files": [
+        "src/inode_table.c",
+        "src/inode_table.h"
+      ]
+    },
+    {
+      "name": "dir_ops",
+      "responsibility": "Directory-specific operations: dir_lookup (find child by name in a directory inode), dir_add (insert a new dirent, fail with EEXIST if name exists), dir_remove (remove dirent by name, fail with ENOENT), dir_list (populate a buffer with all entries for readdir). Maintains the sorted doubly-linked list of dirents.",
+      "files": [
+        "src/dir_ops.c",
+        "src/dir_ops.h"
+      ]
+    },
+    {
+      "name": "storage_backend",
+      "responsibility": "Handle reading and writing raw byte data to file inodes. Provides storage_read(inode, buf, offset, size), storage_write(inode, buf, offset, size), and storage_truncate(inode, new_size). Manages the byte buffer capacity — grows via realloc in 4KB-aligned increments up to 1024MB limit; returns ENOSPC if exceeded.",
+      "files": [
+        "src/storage_backend.c",
+        "src/storage_backend.h"
+      ]
+    },
+    {
+      "name": "path_utils",
+      "responsibility": "Resolve FUSE paths (e.g., '/foo/bar') to inode numbers by walking the directory tree. Provides path_resolve(path, &parent_ino, &target_ino) — returns 0 on success, -ENOENT if component missing, -ENOTDIR if intermediate is not a directory. Also provides path_parent_resolve for create/mkdir use cases.",
+      "files": [
+        "src/path_utils.c",
+        "src/path_utils.h"
+      ]
+    },
+    {
+      "name": "permissions",
+      "responsibility": "Check whether the calling user (from fuse_get_context) has permission to perform a given operation on an inode. Implements basic POSIX permission bits: owner (uid match), group (gid match), and other. Covers read (R_OK), write (W_OK), execute/search (X_OK). Called by fuse_ops before delegating to dir_ops or storage_backend.",
+      "files": [
+        "src/permissions.c",
+        "src/permissions.h"
+      ]
+    }
+  ],
+  "data_model": {
+    "inode_table": "Global hash map keyed by inode number (uint64_t), mapping to inode structures. All inodes share a single mutex for thread safety.",
+    "file_content": "Each regular file's data is stored as a dynamically allocated byte buffer (uint8_t*) with a current size and allocated capacity. Grows via realloc in 4KB increments.",
+    "directory_entries": "Each directory inode owns a sorted linked list of dirent structures, each holding a name (char*) and child inode number. A separate hash map (name -> dirent) enables O(1) lookup.",
+    "path_resolution": "Paths are resolved by walking the directory tree from the root inode. A helper function returns the target inode (or parent) and handles ENOENT/ENOTDIR."
+  },
+  "data_structures": [
+    {
+      "name": "inode_t",
+      "description": "Core inode structure containing metadata and type-specific data pointers. All inode structures are heap-allocated and tracked in the global hash table.",
+      "fields": [
+        "uint64_t ino (unique inode number, monotonically increasing)",
+        "mode_t mode (file type + permissions)",
+        "uid_t uid",
+        "gid_t gid",
+        "struct timespec atime, mtime, ctime",
+        "nlink_t nlink (reference count, always >=1)",
+        "size_t size (logical file size in bytes)",
+        "enum {INODE_FILE, INODE_DIR} type",
+        "union { struct { uint8_t *data; size_t capacity; } file; struct { struct dirent_list *entries; } dir; } content"
+      ]
+    },
+    {
+      "name": "dirent_t",
+      "description": "Directory entry node in a doubly-linked list. Each entry represents one name-inode mapping within a directory.",
+      "fields": [
+        "char *name (entry name, null-terminated, variable length)",
+        "uint64_t ino (target inode number)",
+        "struct dirent *prev, *next (linked list pointers for ordered traversal)"
+      ]
+    },
+    {
+      "name": "fs_state_t",
+      "description": "Global filesystem state singleton holding the root inode, inode table, next inode counter, and the global mutex.",
+      "fields": [
+        "pthread_mutex_t lock (protects all inode table operations)",
+        "GHashTable *inodes (GLib hash table: uint64_t key -> inode_t* value)",
+        "uint64_t next_ino (monotonic counter for inode allocation)",
+        "uint64_t root_ino (inode number of root directory)"
+      ]
+    },
+    {
+      "name": "file_handle_t",
+      "description": "Per-open-file context allocated at open/create time, referenced by FUSE's fi->fh. Tracks the inode and open flags.",
+      "fields": [
+        "uint64_t ino (inode number for this open file)",
+        "int flags (O_RDONLY, O_WRONLY, O_RDWR, etc.)",
+        "struct fuse_context *ctx (caller's credentials at open time)"
+      ]
+    }
+  ],
+  "fuse_operations": [
+    "getattr",
+    "readdir",
+    "mkdir",
+    "rmdir",
+    "create",
+    "open",
+    "read",
+    "write",
+    "unlink",
+    "rename",
+    "truncate",
+    "chmod",
+    "fsync"
+  ],
+  "api_boundaries": [
+    "fuse_ops -> path_utils: calls path_resolve(path, &parent, &target) or path_parent_resolve(path, &parent, &name) to map FUSE path strings to inode numbers",
+    "fuse_ops -> permissions: calls perm_check(inode, access_mode) with fuse_context->uid/gid before any inode mutation",
+    "fuse_ops -> inode_table: calls inode_alloc(type, mode) to create new inodes; inode_lookup(ino) to retrieve existing ones; inode_free(ino) on unlink/rmdir",
+    "fuse_ops -> dir_ops: calls dir_lookup(dir_ino, name), dir_add(dir_ino, name, child_ino), dir_remove(dir_ino, name), dir_list(dir_ino, buf, size) for directory manipulation",
+    "fuse_ops -> storage_backend: calls storage_read/write/truncate on file inodes for read/write/truncate operations",
+    "main -> fuse_ops: registers the FUSE operations struct (fuse_operations) with callbacks pointing to fuse_ops functions; initializes global fs_state before mounting",
+    "Main locking contract: fuse_ops acquires the global mutex (fs_state.lock) at the start of each callback and releases it before returning. All module functions assume the lock is already held.",
+    "inode_table <-> dir_ops: dir_ops uses inode_table_lookup internally to validate child inode numbers exist, keeping cross-reference integrity",
+    "No direct coupling between storage_backend and dir_ops — they operate on disjoint inode types (files vs directories)"
+  ],
+  "limitations": [
+    "No symlink support — symlink calls return ENOSYS",
+    "No hardlink support — link calls return ENOSYS",
+    "No extended attributes — *xattr calls return ENOSYS (ENOTSUP)",
+    "No journaling or crash recovery — power loss may corrupt state",
+    "Permissions are basic: uid/gid/mode stored and enforced at open/access but no ACLs",
+    "Single global mutex — all operations serialize; no concurrent read scaling",
+    "No fsync-to-disk persistence — fsync is a no-op (data lives in RAM only)",
+    "No mmap, lock, ioctl, or other non-core FUSE operations",
+    "Image size limit (1024MB) is advisory only for memory backend; actual limit is host RAM",
+    "Fixed 4096-byte block alignment for writes; partial-block writes are allowed but no write-ahead logging"
+  ],
+  "threading_model": "Single global mutex (pthread_mutex_t) embedded in fs_state_t. Every FUSE operation callback acquires this lock at entry and releases it at exit. Since all data is in RAM with no disk I/O, lock hold times are short (microseconds). This serializes all filesystem operations, which is acceptable for a memory FS with low contention. FUSE's multithreaded dispatch (-o threads=N) still works — threads simply queue on the mutex. The lock is NOT recursive. No per-inode or per-block locking needed.",
+  "memory_management": "Dynamic allocation with cleanup on unlink/rmdir/destroy. inode_t and its content union are heap-allocated via calloc. File data buffers use aligned_alloc or malloc and grow via realloc in 4KB steps. dirent_t name strings use strdup. Global teardown (destroy) walks the inode table, freeing all inodes, dirents, and file buffers. GLib hash table manages inode-to-pointer mappings. No garbage collection — memory is freed deterministically.",
+  "error_handling": "errno-based: all FUSE operation callbacks return -errno on failure (EIO, ENOMEM, ENOENT, EEXIST, ENOTDIR, EISDIR, ENOTEMPTY, EACCES, EPERM, EINVAL, ENOSPC, EROFS). Internal helpers return 0 or negative errno. Out-of-memory triggers abort via perror/exit to match expected kernel behavior.",
+  "confidence": 0.95,
+  "reasoning": "Memory filesystem pattern with 7 well-separated modules. Single global mutex on inode table is the simplest correct approach for a memory-backed FS where all data is in RAM — fine-grained locking adds complexity without benefit since there is no disk I/O to parallelize. GLib hash table chosen for inode table because it provides efficient O(1) lookup, resize, and iteration without reinventing hash maps. Directory entries use both linked list (for ordered readdir output) and hash map (for fast lookup) — this is a standard tradeoff. File data uses simple malloc/realloc byte buffers with 4KB growth increments to match the specified block size. Permissions are separated into their own module to keep fuse_ops thin. Path resolution is isolated so all operations get consistent traversal behavior. fsync is a no-op because there is no persistent storage. Explicitly excluding symlinks, hardlinks, xattrs, and journaling as the IR specifies these are disabled."
+}

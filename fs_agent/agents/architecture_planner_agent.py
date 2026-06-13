@@ -20,27 +20,7 @@ Your job:
 - Provide confidence score and reasoning for architectural decisions.
 - Return valid result matches the structured output schema.
 
-Architecture patterns by storage type:
-
-1. Memory filesystem (storage.type = "memory"):
-   - Modules: main, fuse_ops, inode_table, dir_ops, storage_backend, path_utils
-   - Data model: hash map from path to inode, bytearray per file
-   - Threading: single global mutex protecting inode table
-   - Memory: dynamic allocation, grow as needed
-
-2. Passthrough filesystem (storage.type = "passthrough"):
-   - Modules: main, fuse_ops, path_mapper, syscall_wrapper, permission_checker
-   - Data model: map from virtual path to real path
-   - Threading: per-operation locking, delegate to underlying FS
-   - Memory: minimal, mostly pass-through to real FS
-
-3. Image file filesystem (storage.type = "image_file"):
-   - Modules: main, fuse_ops, block_manager, superblock, btree, journal, cache
-   - Data model: disk blocks, inode table on disk, free space bitmap
-   - Threading: fine-grained locks per block/inode
-   - Memory: buffer cache for hot blocks
-
-For each IR, you must specify:
+You must specify:
 - modules: List of modules with clear responsibilities
 - data_model: Description of core data structures
 - data_structures: Key structs/classes with field descriptions
@@ -50,13 +30,14 @@ For each IR, you must specify:
 - threading_model: Concurrency control strategy
 - memory_management: Allocation and cleanup strategy
 - error_handling: Error propagation pattern
+- dependencies: Extra dependencies (libraries, packages, etc.) that needs to be included
 
 Process:
 1. Read the fs_ir from the state.
 2. Analyze storage type and feature requirements.
 3. Choose appropriate architecture pattern.
 4. Design modules and data structures.
-5. Generate the complete ArchitecturePlanResult JSON.
+5. Return valid output matching the complete ArchitecturePlanResult.
 """
 
 DEBUG = Config().debug
@@ -124,6 +105,11 @@ class ArchitecturePlannerResult(BaseModel):
     error_handling: str = Field(
         default="errno-based",
         description="Error handling pattern"
+    )
+    
+    dependencies: list[str] = Field(
+        default_factory=list,
+        description="Minimal dependent libraies, packages, etc."
     )
 
 

@@ -10,7 +10,7 @@ def debugger_node(state: dict):
     
     print(f"""
 ================================
-test runner agent result: 
+debugger agent result: 
 {result}
 """
 )
@@ -19,7 +19,7 @@ test runner agent result:
         "current_phase": "debugged",
         "debug_status": result.debug_status,
         "retry_count": retry_count + 1,
-        "debug_history": [{"root_cause": result.root_cause, "diagnosis": result.diagnosis}],
+        "debug_history": [{"retry": retry_count, "root_cause": result.root_cause, "diagnosis": result.diagnosis}],
         "issues": [issue.model_dump() for issue in result.issues],
         "patches": [patch.model_dump() for patch in result.patches],
         "debug_next_phase": result.next_phase

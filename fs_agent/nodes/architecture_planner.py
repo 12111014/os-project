@@ -39,7 +39,10 @@ def architecture_planner_node(state: dict):
         "threading_model": result.threading_model,
         "memory_management": result.memory_management,
         "error_handling": result.error_handling,
+        "dependencies":result.dependencies,
     }
+    
+    plan = result.model_dump()
 
     # 保存原始 Agent 输出
     (workspace / "architecture_result.json").write_text(
