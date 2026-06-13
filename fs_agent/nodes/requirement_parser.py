@@ -23,16 +23,7 @@ def requirement_parser_node(state: dict):
     result = agent.perform_task(state)
 
     # 将 Agent 输出转换为 FilesystemIR
-    fs_ir = FilesystemIR(
-        name=result.name,
-        target=result.target,
-        language=result.language,
-        backend=result.backend,
-        storage=result.storage.model_dump(),
-        features=result.features.model_dump(),
-        operations=result.operations,
-        validation=result.validation.model_dump(),
-    )
+    fs_ir = result.fs_ir
 
     # 保存置信度和推理过程供调试
     print(f"[requirement_parser] Confidence: {result.confidence:.2f}")

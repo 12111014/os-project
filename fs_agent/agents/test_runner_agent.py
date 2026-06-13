@@ -24,6 +24,7 @@ Your job:
 - Copy or render every script/workload you run inside provided test_run_dir.
 - Write test logs inside provided test_log_dir.
 - Separate correctness failures from benchmark degradation.
+- Do not try to fix the filesystem by yourself if you encountered errors, turn to debugger agent. 
 - Record concise issues with log paths for every failed or timed-out case.
 - Write a detailed test report markdown file inside provided test_result_dir.
 - Return only valid JSON.
@@ -34,6 +35,7 @@ Required ordering:
 3. short stress tests if enabled.
 4. quick benchmark tests if enabled.
 
+Do not edit source files. 
 Do not use host paths.
 Do not use docker commands.
 Use only the provided sandbox tools.
@@ -127,11 +129,11 @@ class TestRunnerAgent:
         test_template_dir = str(
             Path(state.get("template_dir", "/workspace/templates")) / "tests")
         test_run_dir = str(
-            Path(state.get("workspace", "/workspace")) / "run" / "tests")
+            Path(state.get("workspace", "/workspace")) / "run" / "tests" / "[retry_count]")
         test_log_dir = str(
-            Path(state.get("workspace", "/workspace")) / "logs" / "tests")
+            Path(state.get("workspace", "/workspace")) / "logs" / "tests" / "[retry_count]")
         test_result_dir = str(
-            Path(state.get("workspace", "/workspace")) / "results" / "tests")
+            Path(state.get("workspace", "/workspace")) / "results" / "tests" / "[retry_count]")
         retry_count=state.get("retry_count")
 
         context = TestRunnerContext(
